@@ -1,0 +1,7 @@
+node_modules/
+.env
+.env.*
+*.log
+
+# Raw responses, screenshots and downloaded images from measurements: third-party content, never versioned.
+spikes/**/out/
