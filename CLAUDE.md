@@ -56,8 +56,8 @@ el borrado de un campo va en un release posterior.
 - Remoto: `https://github.com/dsimdev/api-fotos.git` (origin)
 - **Todavía no hay servidor ni deploy.** `main` se protege igual, por convención del kit. Cuando
   haya deploy, se define acá qué pasa al pushear a `main` y cómo se hace el rollback
-- Si hay base de datos, los cambios de esquema van con migración versionada, nunca a mano.
-  Herramienta: por definir
+- Los cambios de esquema de la base (SQL Server) van con migración **Flyway** versionada, nunca a
+  mano
 
 ## 3. Antes de implementar — marco obligatorio para cada feature/fix
 
@@ -102,14 +102,19 @@ Propias del dominio (**provisorias**: se confirman al definir el contrato de la 
 
 - **Nunca devolver una imagen inventada.** Si no hay candidato aceptable, el estado es explícito
   (el brief lo llama `SIN_IMAGEN`); jamás una imagen de relleno ni "la más parecida".
-- **Cada resultado lleva su origen** (la página del comercio de donde salió) **y su confianza**,
-  para poder auditarlo y corregirlo después. Es la misma idea de "traza" de MotorFiscal.
+- **Cada candidato lleva su traza**: tienda y página del comercio de donde salió, posición en la
+  tienda, resolución y si se le quitó el banner; y la recomendada dice por qué se eligió. Sirve para
+  auditar y para que quien la cambie decida con información. Es la idea de "traza" de MotorFiscal.
 - **Caché por EAN, con la imagen en almacenamiento propio.** No se enlaza la URL del comercio:
   esas URLs mueren.
 - **Se devuelve un frente verificado, no cualquier imagen de la tienda.** Solo la posición 0 de
   cada tienda (las posteriores pueden ser del reverso del envase, como pasó con Hesperidina) y sin
   el panel de banner de la plantilla: se recorta si es un objeto separado del producto, y si no se
-  puede, esa imagen se descarta. Nunca se corta el producto.
+  puede, esa imagen no se recomienda nunca. Nunca se corta el producto.
+- **El servicio recomienda UNA imagen y devuelve además los demás candidatos** (decidido el
+  2026-11-05). La tienda guarda la recomendada o la cambia por otro candidato: el caso normal es
+  automático y quien quiera corrige. Si no hay ningún candidato aceptable el estado es explícito
+  (sin imagen) y no hay recomendada. Borrador del contrato: `docs/proyecto/contrato-api.md`.
 
 Nombres finales de los estados (el brief usa `OK`, `CON_MARCA`, `SIN_IMAGEN`): por definir.
 
@@ -127,19 +132,24 @@ Nombres finales de los estados (el brief usa `OK`, `CON_MARCA`, `SIN_IMAGEN`): p
 - **Ningún secreto hardcodeado ni trackeado en git.** Key de SerpApi (si queda de plan B), webhook
   de Slack y credenciales de GESCOM: solo variables de entorno o archivos ignorados. Nunca en un
   doc ni en un mensaje de commit.
-- **Autenticación del consumidor: por definir.** Cuando haya API, el gating real es del servidor.
-- No aplican las reglas de sesión, cookies ni SDK de administrador: no hay UI ni usuarios.
+- **Autenticación de la API: una `x-api-key` atada al cliente (tenant)**, como `api-bonificaciones`
+  (a confirmar al construirla). **El panel usa usuarios con BCrypt y sesión**, no una clave
+  compartida. El gating real es siempre del servidor.
+- **La consulta de demostración del panel (`fotos.demo.enabled`) NO tiene autenticación**: apagada
+  por defecto, solo en localhost, nunca desplegada. Se reemplaza por la API autenticada del panel.
 
 ## 7. Diseño de la API
 
-No es UI. Convenciones provisorias, a confirmar al definir el contrato:
+La API no tiene UI propia (el panel es aparte). Convenciones provisorias, a confirmar:
 
-- Un endpoint por EAN y **otro por lotes**. El pedido lleva el EAN y, opcional, el nombre del
-  artículo (sin nombre la búsqueda parece peor; comparado en un solo EAN).
-- Respuesta con **estado explícito, origen y confianza** (sección 5), nunca solo una URL.
+- Un endpoint por EAN y **otro por lotes**. El pedido lleva solo el EAN: la coincidencia es por EAN
+  exacto y el nombre del artículo no se usa para decidir (con Google hacía falta; con VTEX no).
+- Respuesta con **estado explícito, una imagen recomendada y la lista de candidatos con su traza**
+  (sección 5), nunca solo una URL. Las imágenes se sirven desde nuestra copia. Borrador en
+  `docs/proyecto/contrato-api.md`.
 - Errores con **código de dominio**, no solo el HTTP status.
-- Las reglas que cambian seguido (dominios preferidos o descartados, filtro de redes sociales,
-  normalización del nombre) van en datos, no en código.
+- Las reglas que cambian seguido (la lista y el orden de las tiendas, los criterios para elegir la
+  recomendada) van en datos, no en código.
 
 ## 8. Código
 
@@ -200,27 +210,33 @@ una auditoría, actualizar ese archivo con la versión auditada.
 framework (conectores a las tiendas, pipeline de imágenes) y una app que lo expone, como
 `api-impuestos` y `api-bonificaciones`. Más un **panel de administración Next.js (export estático)
 embebido en el jar y servido en `/admin`: todos los servicios llevan uno**, y se arma con el mismo
-molde que esos dos. Persistencia y dónde se guardan las imágenes: por definir. Fuente principal,
-ya medida: los **catálogos VTEX de
-supermercados argentinos consultados por EAN** (Jumbo, Carrefour, Disco, Vea, Masonline y tiendas
+molde que esos dos. Persistencia: **SQL Server + Flyway** como los hermanos (usuarios del panel,
+claves de API, historial de llamadas, índice de la caché por EAN); las imágenes van a disco, y
+dónde queda por definir. Fuente principal, ya medida: los **catálogos VTEX de supermercados
+argentinos consultados por EAN** (Jumbo, Carrefour, Disco, Vea, Masonline y tiendas
 regionales como Josimar y Cordiez): coincidencia exacta de EAN, ~0,5 s por consulta, imágenes de
 1000 a 2000 px. Detalle y cifras en `docs/proyecto/mediciones.md`. Idea sugerida, **no decidida**:
 fuentes intercambiables detrás de la misma interfaz, en orden caché propia → VTEX por EAN →
 respaldo por definir (Open Food Facts, SerpApi). Ver `docs/proyecto/origen/` y, cuando exista,
 `docs/proyecto/arquitectura.md`.
 
-**Restricción dominante: independencia de terceros.** Está decidido que el servicio sea 100%
-automático y lo más independiente posible de terceros. Cada tienda puede cambiar o cortar su API, y
+**Restricción dominante: independencia de terceros.** Está decidido que el servicio sea automático
+(recomienda una imagen sin que nadie elija; la tienda puede cambiarla) y lo más independiente
+posible de terceros. Cada tienda puede cambiar o cortar su API, y
 hay EAN que existen en una sola tienda: por eso las fuentes tienen que ser intercambiables y se
 consultan varias tiendas por EAN.
 
-**Decididas (2026-11-05)**: servicio nuevo en repo propio; 100% automático; **Java 21 + Spring Boot
-con un panel Next embebido**; **VTEX por EAN como
+**Decididas (2026-11-05)**: servicio nuevo en repo propio; automático por defecto, con **una
+imagen recomendada y los demás candidatos para que la tienda pueda cambiarla**; **SQL Server +
+Flyway**; **Java 21 + Spring Boot con un panel Next embebido**; **VTEX por EAN como
 fuente principal** (el usuario lo aceptó después de medirlo). **Descartado por medición**: el
 scraping propio de Google, que bloquea a un navegador automatizado en la primera request y no se
 esquiva (ver `docs/proyecto/mediciones.md`). SerpApi queda de plan B y Open Food Facts de respaldo.
-**Abiertas**: la persistencia y dónde se guardan las imágenes; qué se devuelve cuando ninguna tienda tiene una imagen sin banner (el
-recorte del panel funcionó en los 12 casos revisados, pero falta un verificador); verificación con
+**Abiertas**: **quién cambia la imagen en la tienda** (una persona o el sistema; en el sistema de la
+tienda o en nuestro panel); dónde se guardan las imágenes en disco; si un candidato con banner que no
+se pudo recortar se lista (marcado, nunca recomendado) o se descarta; qué se devuelve cuando ninguna
+tienda tiene una imagen sin banner (el recorte funcionó en los 12 casos revisados, pero falta un
+verificador); verificación con
 modelo de visión, ahora acotada a "frente limpio del producto correcto"; fuentes para los EAN que
 ninguna tienda tiene; cómo guarda `senderolaser` las imágenes en su SQL; y los **términos de uso de
 las APIs de VTEX y los derechos de las imágenes** (consultar antes de producción).
