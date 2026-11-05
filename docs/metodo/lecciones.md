@@ -109,6 +109,30 @@ cada una → mejoras si las hay → encaje y costo en el entorno → resumen y o
 elección. **Esto se cumple sobre todo cuando el pedido parece obvio**: ahí es donde más seguido
 se construye lo que no era.
 
+**19. Una URL que la app arma para sí misma no se prueba solo en directo.**
+Cualquier código que sirve una página o genera una URL absoluta para el propio navegador (login,
+docs interactivas tipo Swagger, un panel embebido) hay que probarlo contra la topología de deploy
+real, no alcanza con local sin proxy — un reverse proxy que cuelga la app bajo un sub-path y no
+manda `X-Forwarded-Prefix` rompe cualquier ruta absoluta sin que un test directo lo detecte nunca.
+Y un patrón ya resuelto una vez (ej. el basePath de un panel embebido) **no se hereda solo**:
+aplica de nuevo, a propósito, a cada superficie nueva del mismo tipo — costó dos incidentes reales
+en el mismo proyecto, el segundo evitable porque el patrón ya se conocía y no se aplicó por
+adelantado.
+
+Tercera vuelta del mismo bug, mismo proyecto: una sola página puede armar **más de una** URL
+absoluta de forma independiente (Swagger arma una para pedir el spec y OTRA, por un mecanismo de
+config totalmente distinto, para pedir su propia configuración de UI). Arreglar una y verificarla
+en vivo no prueba que la página entera esté bien — hay que enumerar CADA lugar donde el código
+arma una URL para sí mismo, no asumir que ya los encontraste todos porque el síntoma visible
+desapareció.
+
+Lo que finalmente cortó el patrón: dejar de razonar "¿qué URL me falta pensar?" y en cambio
+**reproducir la topología rota localmente** — un proxy de juguete que pela el mismo prefijo que
+pela el real y no manda los mismos headers que el real no manda, para poder navegar/curlear TODA
+la superficie antes de pedirle a nadie que toque el servidor real. Un test mental de "creo que ya
+cubrí todos los casos" pierde contra un caso real que no se imaginó; un proxy real corriendo
+local no depende de haberlo imaginado.
+
 ---
 
 ## Sobre los hooks
