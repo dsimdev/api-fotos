@@ -136,7 +136,7 @@ angosto y corto). La segunda rellena el blanco encerrado entre píxeles de color
 
 ### Lo que sigue sin probarse
 
-- **El recorte del panel** (hay `cropBox` calculado para unas 100 imágenes, no se aplicó ni se miró ninguno).
+- ~~El recorte del panel~~: probado en la fase A3, más abajo.
 - Un modelo de visión como verificador: ahora tiene un trabajo mucho más acotado (¿es un frente limpio?).
 - Más tiendas VTEX y otras fuentes para los 3 EAN que no están (Gaona y familia, Maní tubular, Don Nicanor).
 - Los términos de uso de las APIs de VTEX y los derechos de las imágenes.
@@ -156,3 +156,60 @@ OUT_NAME=vtex-40 node summarize-sample.mjs
 `out/dyssa-valid779.json` sale de `origen/prueba-2026-11-05/dyssa-articulos.js` con una cantidad grande (por ejemplo
 5000), que vuelca todos los EAN válidos; requiere la colección de Postman de dyssa y permiso de lectura. **No se versiona:**
 es el catálogo de un cliente.
+
+## Fase A3 — recorte del banner (2026-11-05)
+
+`spikes/measure-sources/crop-banner.mjs`. Para las imágenes que el detector marcó con panel (107):
+
+1. Segmenta la imagen en objetos conectados (blanco = fondo, sin rellenar huecos).
+2. El producto es el objeto más grande. El panel es **otro objeto separado**: alto y a la derecha, o ancho y abajo, más
+   la insignia ("400 Gr") que lo acompaña.
+3. Copia **solo el rectángulo que contiene al producto**, desde los píxeles originales, a un cuadrado blanco con 8% de
+   margen. No agranda: la resolución es la original.
+
+**Regla de seguridad:** si el panel no es un objeto separado (toca al producto), no recorta y deja la imagen como estaba
+(`no-separate-panel`). Como solo se copia la caja del producto, el producto nunca se corta.
+
+### Resultado
+
+| | |
+|---|---|
+| Imágenes con panel | 107 |
+| Recortadas | 79 |
+| Sin tocar (panel pegado al producto) | 28 |
+| EAN "solo banner" con al menos un recorte posible | **12 de 14** |
+| Esos 12, revisados a ojo (original y recorte lado a lado) | **12 de 12**: el panel desaparece, el producto queda entero y centrado |
+| Tamaño de salida de los 79 recortes | mínimo 667 px, mediana 1073, máximo 2334 |
+
+- Los 2 EAN que no se pueden recortar son Valenciano Masita (solo está en Josimar, con el panel pegado) y Canale Tirabuzón.
+- **Hesperidina tampoco se puede recortar:** su panel inferior está pegado a la botella. Su frente sigue con banner y la
+  única imagen sin panel es la contraetiqueta.
+- **El detector automático no sirve para verificar los recortes:** asume que el producto no llega a la franja derecha, y en
+  un recorte el producto ocupa el 84% del cuadrado, así que marca el envase como panel (58 de 79). Se verificó solo a ojo.
+- Quien revisó a ojo fue Claude: sin independencia. 12 casos es una muestra chica.
+
+### Estimación final de la muestra de 40
+
+| | EAN |
+|---|---|
+| Imagen limpia en la posición 0 (por el detector) | 21 |
+| Con banner, recortada y revisada a ojo | 12 |
+| **Frente sin banner utilizable** | **33 (83%)**, 34 si se admite la segunda imagen de Lira (es un frente limpio) |
+| Con banner que no se puede recortar (Hesperidina, Valenciano, Canale) | 3 |
+| No encontrados en ninguna tienda | 3 |
+| Imagen "limpia" que en realidad es el reverso (Hesperidina) | cuenta como no utilizable |
+
+**Rango razonable: 80 a 88%.** Los 21 de la posición 0 dependen del detector (10 miradas a ojo hasta ahora), y la muestra
+sale de una sola distribuidora. Con la regla de usar **solo la posición 0** se entregaría un frente sin banner en el 83%
+de los EAN, y en el 92% de los que alguna tienda tiene.
+
+### Cómo repetirlo
+
+```
+node detect-banner.mjs out/vtex-40/images-by-store
+node crop-banner.mjs out/vtex-40/images-by-store out/vtex-40/banner-detect.json out/vtex-40/cropped
+node contact-sheet.mjs <pares.json> out/vtex-40/sheet 6       # original y recorte lado a lado, para revisar a ojo
+```
+
+Ojo: `detect-banner.mjs` pisa el `banner-detect.json` de la carpeta anterior si se lo corre sobre otra carpeta; usar
+`DETECT_OUT=<archivo>` para no perder el resultado.

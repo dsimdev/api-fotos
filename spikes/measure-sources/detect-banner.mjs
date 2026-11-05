@@ -4,7 +4,9 @@
 // Decoding is done by Chromium (Playwright) on a canvas, so no image library is needed.
 // Classes: side | bottom | none | unknown (unknown = the frame of the image is not white, so it is not a
 // white-background catalog shot and the heuristic does not apply).
-// Output: <images-dir>/../banner-detect.json
+// Output: <images-dir>/../banner-detect.json (or $DETECT_OUT)
+// ASSUMPTION: the product does not reach the right 35% / bottom 30% of the image. True for the catalog shots with
+// margins, FALSE for crops that re-center the product at full size: do not use this detector to verify those.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { chromium } from 'playwright';
@@ -70,7 +72,9 @@ for (const f of files) {
   results[f] = { cls, w: r.w, h: r.h, frameWhite: +r.frameWhite.toFixed(3), sideRun: +r.side.len.toFixed(3), bottomRun: +r.bottom.len.toFixed(3), cropBox };
 }
 await browser.close();
-writeFileSync(join(dirname(dir), 'banner-detect.json'), JSON.stringify(results, null, 2));
+// DETECT_OUT overrides the output path. Default: next to the images folder, which OVERWRITES the previous
+// banner-detect.json of that run: pass DETECT_OUT when analysing a second folder.
+writeFileSync(process.env.DETECT_OUT || join(dirname(dir), 'banner-detect.json'), JSON.stringify(results, null, 2));
 
 const counts = {};
 for (const r of Object.values(results)) counts[r.cls] = (counts[r.cls] || 0) + 1;
