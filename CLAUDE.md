@@ -4,7 +4,8 @@ Servicio que recibe un código de barras (EAN) y devuelve la foto del producto, 
 Primer cliente: la tienda `senderolaser`, que no tiene imágenes de sus productos; lo consume el
 backend de la tienda. No tiene UI: es una API.
 
-**Etapa actual (2026-11-05): medición de tecnologías.** Todavía no hay código ni servidor. Lo
+**Etapa actual (2026-11-05): medición de tecnologías.** Todavía no hay código ni servidor. Ya se
+midió la fuente de las imágenes (`docs/proyecto/mediciones.md`) y falta elegir el stack. Lo
 investigado y la prueba con 10 productos de dyssa están en `docs/proyecto/origen/`. Lo que depende
 de la tecnología dice "por definir" y se completa cuando se decida, no antes.
 
@@ -59,8 +60,8 @@ Para cada cosa que se pida, responder con este marco ANTES de codear:
 4. **Mejoras** — si es viable
 5. **El entorno** — por definir: no hay servidor. Si corriera en el servidor de la tienda, ver
    `C:\dev\docs\servidor\el-servidor-de-la-tienda.md` (reloj en UTC−12, entregas que pisan ajustes
-   manuales). Para la consulta a Google se sugirió **no** usar ese servidor: una IP que hace
-   búsquedas automáticas puede quedar bloqueada. **El tamaño del servidor no es restricción**
+   manuales). Las consultas a las tiendas salen desde la IP del servicio: no se midió cuántas
+   aguanta cada una antes de limitar, hay que medirlo antes de escalar. **El tamaño del servidor no es restricción**
    (decisión 2026-11-05: cuando haga falta se invierte en infra, y bonificaciones ya alerta por
    memoria); medir memoria y CPU para dimensionar, no para descartar. Pensar costos, encaje y
    viabilidad
@@ -95,12 +96,16 @@ Propias del dominio (**provisorias**: se confirman al definir el contrato de la 
   para poder auditarlo y corregirlo después. Es la misma idea de "traza" de MotorFiscal.
 - **Caché por EAN, con la imagen en almacenamiento propio.** No se enlaza la URL del comercio:
   esas URLs mueren.
+- **Se devuelve un frente verificado, no cualquier imagen de la tienda.** Solo la posición 0 de
+  cada tienda (las posteriores pueden ser del reverso del envase, como pasó con Hesperidina) y sin
+  el panel de banner de la plantilla: se recorta si es un objeto separado del producto, y si no se
+  puede, esa imagen se descarta. Nunca se corta el producto.
 
 Nombres finales de los estados (el brief usa `OK`, `CON_MARCA`, `SIN_IMAGEN`): por definir.
 
 ## 6. Seguridad — no negociable
 
-- **SSRF.** La URL de la imagen sale de un resultado de búsqueda, o sea de un tercero. Antes de
+- **SSRF.** La URL de la imagen sale de la respuesta de una tienda, o sea de un tercero. Antes de
   descargar: solo `http`/`https`; bloquear IPs privadas, loopback y link-local (también después de
   una redirección); límite de tamaño y de tiempo; **detectar el tipo de imagen por los primeros
   bytes**, no por el `Content-Type` (un servidor respondió `application/octet-stream` con una imagen
@@ -145,8 +150,8 @@ Herramienta: por definir. Tres capas, en `docs/metodo/testing.md`. La regla cort
   todos los resultados son redes sociales, la descarga falla a mitad, el servidor responde
   `application/octet-stream`
 - Todo bug que llega a producción se cierra con un test que lo fija
-- **Los tests automáticos no pegan a Google ni a otros terceros reales** (riesgo de bloqueo de IP).
-  Las mediciones contra terceros son scripts aparte
+- **Los tests automáticos no pegan a las tiendas ni a otros terceros reales** (riesgo de bloqueo
+  de IP y de abuso). Las mediciones contra terceros son scripts aparte, con pocas consultas y pausas
 - La vara para medir cualquier método nuevo es `docs/proyecto/origen/prueba-2026-11-05/veredictos-dyssa.json`
   (10 productos, 30 candidatos). Ojo: los veredictos los puso una persona mirando cada imagen, no es
   una medición automática, y la muestra es de marcas grandes
@@ -175,21 +180,28 @@ una auditoría, actualizar ese archivo con la versión auditada.
 
 ## 13. Contexto del proyecto
 
-**Arquitectura**: por definir. Idea sugerida, **no decidida**: fuentes de imágenes intercambiables
-detrás de la misma interfaz, en orden caché propia → scraping propio de Google → Open Food Facts
-(SerpApi como plan B si el scraping se bloquea). Ver `docs/proyecto/origen/` y, cuando exista,
+**Arquitectura**: stack por definir. Fuente principal, ya medida: los **catálogos VTEX de
+supermercados argentinos consultados por EAN** (Jumbo, Carrefour, Disco, Vea, Masonline y tiendas
+regionales como Josimar y Cordiez): coincidencia exacta de EAN, ~0,5 s por consulta, imágenes de
+1000 a 2000 px. Detalle y cifras en `docs/proyecto/mediciones.md`. Idea sugerida, **no decidida**:
+fuentes intercambiables detrás de la misma interfaz, en orden caché propia → VTEX por EAN →
+respaldo por definir (Open Food Facts, SerpApi). Ver `docs/proyecto/origen/` y, cuando exista,
 `docs/proyecto/arquitectura.md`.
 
 **Restricción dominante: independencia de terceros.** Está decidido que el servicio sea 100%
-automático y lo más independiente posible de terceros. Google puede bloquear o cambiar, y SerpApi
-está en juicio con Google (abierto al 2026-11-05): por eso las fuentes tienen que ser intercambiables.
+automático y lo más independiente posible de terceros. Cada tienda puede cambiar o cortar su API, y
+hay EAN que existen en una sola tienda: por eso las fuentes tienen que ser intercambiables y se
+consultan varias tiendas por EAN.
 
-**Decididas (2026-11-05)**: servicio nuevo en repo propio; 100% automático; scraping propio de
-Google (SerpApi se probó y se descartó, queda de plan B); Open Food Facts de respaldo.
-**Abiertas**: la tecnología (se decide midiendo), cómo se consulta Google y desde dónde corre,
-verificación con modelo de visión, cómo guarda `senderolaser` las imágenes en su SQL, qué hacer con
-las fotos correctas pero con logo o banner de otro comercio, y el riesgo legal del scraping propio
-(consultar con un abogado antes de producción).
+**Decididas (2026-11-05)**: servicio nuevo en repo propio; 100% automático; **VTEX por EAN como
+fuente principal** (el usuario lo aceptó después de medirlo). **Descartado por medición**: el
+scraping propio de Google, que bloquea a un navegador automatizado en la primera request y no se
+esquiva (ver `docs/proyecto/mediciones.md`). SerpApi queda de plan B y Open Food Facts de respaldo.
+**Abiertas**: la tecnología; qué se devuelve cuando ninguna tienda tiene una imagen sin banner (el
+recorte del panel funcionó en los 12 casos revisados, pero falta un verificador); verificación con
+modelo de visión, ahora acotada a "frente limpio del producto correcto"; fuentes para los EAN que
+ninguna tienda tiene; cómo guarda `senderolaser` las imágenes en su SQL; y los **términos de uso de
+las APIs de VTEX y los derechos de las imágenes** (consultar antes de producción).
 
 **Permisos**: por definir.
 
