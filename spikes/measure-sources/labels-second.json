@@ -1,0 +1,16 @@
+{
+  "_note": "Hand labels (by Claude, looking at each image, 2026-11-05) for 11 images of the 40-EAN run (out/vtex-40). banner = side or bottom panel with product name and weight; clean = no such panel. These 11 were looked at AFTER the first detector version and were used to tune the second, so they are NOT independent. 7791090200014-jumbo-1 has no panel but is the BACK of the bottle, not a front shot. 7790139000103-masonline is clean but only 170x170.",
+  "7790070651044-jumbo.jpg": "clean",
+  "7790070509017-josimar.jpg": "banner",
+  "7790310985670-cordiez.jpg": "clean",
+  "7790070336460-masonline.jpg": "clean",
+  "7790310984291-jumbo.jpg": "banner",
+  "7790310984291-disco.jpg": "banner",
+  "7790310984291-vea.jpg": "banner",
+  "7791090200014-jumbo-1.jpg": "clean",
+  "7790070231949-jumbo-1.jpg": "clean",
+  "7790139000103-masonline.jpg": "clean",
+  "7790070626103-jumbo.jpg": "banner",
+  "7790070509062-jumbo.jpg": "banner",
+  "7790070418425-jumbo.jpg": "banner"
+}

@@ -6,10 +6,11 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const selection = process.argv[2] || join(import.meta.dirname, '..', '..', 'docs', 'proyecto', 'origen', 'prueba-2026-11-05', 'dyssa-seleccion.json');
-const HOSTS = ['www.jumbo.com.ar', 'www.carrefour.com.ar', 'www.disco.com.ar', 'www.vea.com.ar', 'diaonline.supermercadosdia.com.ar', 'www.masonline.com.ar'];
+// VTEX_HOSTS (comma separated) and OUT_NAME (folder under out/) can be overridden from the environment.
+const HOSTS = (process.env.VTEX_HOSTS || 'www.jumbo.com.ar,www.carrefour.com.ar,www.disco.com.ar,www.vea.com.ar,diaonline.supermercadosdia.com.ar,www.masonline.com.ar').split(',');
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 const PAUSE_MS = 1000;
-const out = join(import.meta.dirname, 'out', 'vtex');
+const out = join(import.meta.dirname, 'out', process.env.OUT_NAME || 'vtex');
 mkdirSync(join(out, 'images'), { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -78,7 +79,7 @@ for (const a of items) {
   }
   const first = perHost.find((h) => h.exactEan && h.images?.length);
   const image = first ? await download(first.images[0], a.ean) : null;
-  results.push({ ean: a.ean, descripcion: a.descripcion, stores: perHost, bestStore: first?.host || null, image });
+  results.push({ ean: a.ean, descripcion: a.descripcion, stratum: a.stratum, stores: perHost, bestStore: first?.host || null, image });
   const found = perHost.filter((h) => h.exactEan).map((h) => h.host.replace(/^www\./, '').split('.')[0]);
   console.log(`${a.ean} | ${a.descripcion.slice(0, 38).padEnd(38)} | stores: ${found.length}/${HOSTS.length} ${found.join(',') || '-'}${image?.file ? ` | img ${image.type} ${image.w || '?'}x${image.h || '?'} ${Math.round(image.bytes / 1024)}KB` : ''}`);
 }
@@ -89,6 +90,10 @@ const perStore = Object.fromEntries(HOSTS.map((h) => [h, results.filter((r) => r
 const bad = HOSTS.map((h) => [h, results.flatMap((r) => r.stores).filter((s) => s.host === h && (s.note || s.status !== 200)).length]).filter(([, n]) => n);
 console.log(`\nCovered by at least one store: ${covered}/${results.length}`);
 console.log('Per store:', JSON.stringify(perStore));
+for (const s of [...new Set(results.map((r) => r.stratum).filter(Boolean))]) {
+  const rs = results.filter((r) => r.stratum === s);
+  console.log(`Stratum ${s}: ${rs.filter((r) => r.bestStore).length}/${rs.length} covered`);
+}
 console.log(`Latency per request: p50 ${ms[Math.floor(ms.length / 2)]} ms, p95 ${ms[Math.floor(ms.length * 0.95)]} ms, max ${ms.at(-1)} ms (${ms.length} requests)`);
 if (bad.length) console.log('Hosts with errors or non-200:', JSON.stringify(bad));
 writeFileSync(join(out, 'results.json'), JSON.stringify(results, null, 2));
