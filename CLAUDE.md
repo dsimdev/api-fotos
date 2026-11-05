@@ -5,7 +5,8 @@ Primer cliente: la tienda `senderolaser`, que no tiene imágenes de sus producto
 backend de la tienda. No tiene UI: es una API.
 
 **Etapa actual (2026-11-05): medición de tecnologías.** Todavía no hay código ni servidor. Ya se
-midió la fuente de las imágenes (`docs/proyecto/mediciones.md`) y falta elegir el stack. Lo
+midió la fuente de las imágenes (`docs/proyecto/mediciones.md`) y se eligió el stack (Java + panel
+Next embebido); falta definir la persistencia y el primer corte. Lo
 investigado y la prueba con 10 productos de dyssa están en `docs/proyecto/origen/`. Lo que depende
 de la tecnología dice "por definir" y se completa cuando se decida, no antes.
 
@@ -18,10 +19,11 @@ de la tecnología dice "por definir" y se completa cuando se decida, no antes.
 
 Antes de `git push origin main`, completar en este orden **sin excepción**:
 
-1. Build y tests: **por definir** (depende de la tecnología). Pasan sin errores y en verde
+1. `./gradlew build` pasa sin errores (build + tests verdes; reconstruye también el panel si hay
+   `node_modules`). Todavía no existe el build: se arma en el primer corte
 2. **Bump versión** en `.claude/VERSION` (arranca en `0.1.0`) — semver: patch=fix/tweak,
-   minor=feature nueva, major=rediseño/breaking. Si más adelante hay un manifiesto de build
-   (`pom.xml`, `package.json`), los dos bumpean juntos en el mismo commit
+   minor=feature nueva, major=rediseño/breaking. Cuando exista el `build.gradle.kts` raíz, su
+   `version` se bumpea **junto** con `.claude/VERSION`, en el mismo commit
 3. **`CHANGELOG.md`** — entrada técnica en inglés con todos los cambios del release
 4. ~~`CHANGELOG_USER.md`~~ — **no se usa en este proyecto** (decisión 2026-11-05: un solo changelog,
    en inglés). Se conserva el número para no desalinear `docs/metodo/`
@@ -34,6 +36,14 @@ Antes de `git push origin main`, completar en este orden **sin excepción**:
 
 Un hook pide aprobación al detectar un push que toca `main` o un tag `vX.Y.Z`. El hook es la
 última barrera, no el checklist: los pasos 1–6 son tuyos.
+
+**Si el cambio agrega o toca algo que un navegador carga directo** (el panel, Swagger, cualquier URL
+que la app arma para sí misma) y el servicio se publica detrás de un proxy con sub-ruta, como los
+otros dos del servidor de la tienda: compilar con `-PpanelBasePath=/api/<servicio>/admin` y
+probarlo **a través** de `scripts/servidor/simular-proxy-anidado.ps1` (a copiar de
+`api-bonificaciones`), nunca solo contra `localhost`: probarlo directo no reproduce el bug. Ver
+`docs/metodo/lecciones.md` #19. El panel se compila siempre con la ruta configurable
+(`PANEL_BASE_PATH`, por defecto `/admin`), aunque todavía no se sepa dónde se publica.
 
 **Este servicio lo consumen otros** (el backend de la tienda). La API nueva nunca rompe al cliente
 viejo: campos nuevos opcionales, endpoints nuevos en vez de cambiar la firma de los existentes, y
@@ -140,7 +150,9 @@ No es UI. Convenciones provisorias, a confirmar al definir el contrato:
 
 ## 9. Testing
 
-Herramienta: por definir. Tres capas, en `docs/metodo/testing.md`. La regla corta:
+Herramienta: JUnit 5 + Spring Boot Test, y **WireMock** (un servidor HTTP de verdad como stub, no
+mocks en proceso) para los conectores de las tiendas. Tres capas, en `docs/metodo/testing.md`. La
+regla corta:
 
 - Lógica pura (normalización del nombre, validación del EAN, filtros de dominio, detección del tipo
   por bytes) → unit test
@@ -156,7 +168,9 @@ Herramienta: por definir. Tres capas, en `docs/metodo/testing.md`. La regla cort
   (10 productos, 30 candidatos). Ojo: los veredictos los puso una persona mirando cada imagen, no es
   una medición automática, y la muestra es de marcas grandes
 
-Dónde viven los tests: por definir.
+Los tests viven en `src/test` de cada módulo. Los que pegan a tiendas reales llevan un tag excluido
+por defecto (como `erp` en `api-bonificaciones`) y se corren con una propiedad de Gradle, para que
+`./gradlew build` siga verde en cualquier máquina y sin red.
 
 ## 10. Commits y mensajes
 
@@ -180,7 +194,12 @@ una auditoría, actualizar ese archivo con la versión auditada.
 
 ## 13. Contexto del proyecto
 
-**Arquitectura**: stack por definir. Fuente principal, ya medida: los **catálogos VTEX de
+**Arquitectura**: **Java 21 + Spring Boot 3.4, Gradle multi-módulo (Kotlin DSL)**: un núcleo sin
+framework (conectores a las tiendas, pipeline de imágenes) y una app que lo expone, como
+`api-impuestos` y `api-bonificaciones`. Más un **panel de administración Next.js (export estático)
+embebido en el jar y servido en `/admin`: todos los servicios llevan uno**, y se arma con el mismo
+molde que esos dos. Persistencia y dónde se guardan las imágenes: por definir. Fuente principal,
+ya medida: los **catálogos VTEX de
 supermercados argentinos consultados por EAN** (Jumbo, Carrefour, Disco, Vea, Masonline y tiendas
 regionales como Josimar y Cordiez): coincidencia exacta de EAN, ~0,5 s por consulta, imágenes de
 1000 a 2000 px. Detalle y cifras en `docs/proyecto/mediciones.md`. Idea sugerida, **no decidida**:
@@ -193,11 +212,12 @@ automático y lo más independiente posible de terceros. Cada tienda puede cambi
 hay EAN que existen en una sola tienda: por eso las fuentes tienen que ser intercambiables y se
 consultan varias tiendas por EAN.
 
-**Decididas (2026-11-05)**: servicio nuevo en repo propio; 100% automático; **VTEX por EAN como
+**Decididas (2026-11-05)**: servicio nuevo en repo propio; 100% automático; **Java 21 + Spring Boot
+con un panel Next embebido**; **VTEX por EAN como
 fuente principal** (el usuario lo aceptó después de medirlo). **Descartado por medición**: el
 scraping propio de Google, que bloquea a un navegador automatizado en la primera request y no se
 esquiva (ver `docs/proyecto/mediciones.md`). SerpApi queda de plan B y Open Food Facts de respaldo.
-**Abiertas**: la tecnología; qué se devuelve cuando ninguna tienda tiene una imagen sin banner (el
+**Abiertas**: la persistencia y dónde se guardan las imágenes; qué se devuelve cuando ninguna tienda tiene una imagen sin banner (el
 recorte del panel funcionó en los 12 casos revisados, pero falta un verificador); verificación con
 modelo de visión, ahora acotada a "frente limpio del producto correcto"; fuentes para los EAN que
 ninguna tienda tiene; cómo guarda `senderolaser` las imágenes en su SQL; y los **términos de uso de
