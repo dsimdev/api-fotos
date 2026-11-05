@@ -1,0 +1,69 @@
+server:
+  # 8082 and not 8080/8081: on the store server api-impuestos listens on 8080 and api-bonificaciones
+  # on 8081. Two services on the same port do not both start, and the second fails with an
+  # "Address already in use" that does not say whose port it is. The local default is the same as
+  # the production one on purpose: what is tested locally is what runs.
+  port: ${PORT:8082}
+
+spring:
+  application:
+    name: api-fotos
+
+fotos:
+  # Replaced by the build when packaging (see processResources in fotos-app/build.gradle.kts), so
+  # /health reports what is really running and not a value typed by hand.
+  version: "@version@"
+  # The commit the jar was built from. The version is typed by a person and can repeat between two
+  # different builds; the hash comes from the repo and cannot be wrong.
+  commit: "@commit@"
+  # The prefix with which the BROWSER sees this app when a proxy hangs it under a sub-path. Empty =
+  # direct access to Spring (the local case). It is set by the build from -PpanelBasePath and NOT by
+  # an environment variable on purpose: it has to be the same one the panel was compiled with, and
+  # two sources of truth for the same datum drift apart.
+  external-base-path: "@externalBasePath@"
+  # The zone in which the service reports times. NOT the server clock's: production runs in UTC-12,
+  # nine hours behind Argentina.
+  time-zone: ${FOTOS_TIME_ZONE:America/Argentina/Buenos_Aires}
+
+  demo:
+    # The EAN lookup screen of the panel (GET /admin/v1/lookup). OFF by default: it has no
+    # authentication and makes requests to third parties on demand. Turn it on only on a machine
+    # nobody else can reach, and never in a deployed instance.
+    enabled: ${FOTOS_DEMO_ENABLED:false}
+
+  catalog:
+    # The stores to ask, IN THE ORDER to ask them: callers stop at the first usable image. Order by
+    # coverage of the 40-EAN sample (docs/proyecto/mediciones.md): jumbo 33, carrefour 31,
+    # masonline 30, josimar 15, cordiez 13. Disco and Vea go last: they serve exactly the same files
+    # as Jumbo (same hash), so as image sources they add nothing after it.
+    stores:
+      - id: jumbo
+        base-url: https://www.jumbo.com.ar
+      - id: carrefour
+        base-url: https://www.carrefour.com.ar
+      - id: masonline
+        base-url: https://www.masonline.com.ar
+      - id: josimar
+        base-url: https://www.josimar.com.ar
+      - id: cordiez
+        base-url: https://www.cordiez.com.ar
+      - id: disco
+        base-url: https://www.disco.com.ar
+      - id: vea
+        base-url: https://www.vea.com.ar
+    connect-timeout: ${FOTOS_STORE_CONNECT_TIMEOUT:5s}
+    read-timeout: ${FOTOS_STORE_READ_TIMEOUT:10s}
+    # FAILED ATTEMPTS in a row before a store is left alone. Attempts, not requests: a request that
+    # fails and is retried burns two.
+    attempts-to-open: ${FOTOS_STORE_ATTEMPTS_TO_OPEN:4}
+    open-for: ${FOTOS_STORE_OPEN_FOR:30s}
+    retry-wait: ${FOTOS_STORE_RETRY_WAIT:200ms}
+    # The stores publish no rate limit for this endpoint (checked 2026-11-05: 340 requests at about
+    # one every 7 s per store, all 200). Until it is measured the service paces itself.
+    min-interval: ${FOTOS_STORE_MIN_INTERVAL:250ms}
+    max-retry-after: ${FOTOS_STORE_MAX_RETRY_AFTER:5s}
+    max-open-on-rate-limit: ${FOTOS_STORE_MAX_OPEN_ON_RATE_LIMIT:5m}
+
+logging:
+  level:
+    root: INFO

@@ -5,3 +5,28 @@ node_modules/
 
 # Raw responses, screenshots and downloaded images from measurements: third-party content, never versioned.
 spikes/**/out/
+
+# Gradle and IDE output.
+build/
+.gradle/
+bin/
+.idea/
+*.iml
+.vscode/
+
+# Personal Claude Code permissions are not shared with the team.
+.claude/settings.local.json
+
+# Panel (Next): the static export is rebuilt by Gradle, never versioned.
+panel/out/
+panel/.next/
+next-env.d.ts
+*.tsbuildinfo
+
+# The delivery jar is a binary of tens of MB: it goes in the folder handed over outside git.
+entrega-servidor/*.jar
+*.rar
+*.zip
+
+# The Slack webhook is a SECRET: never in the repo, even if someone copies it next to the package.
+entrega-servidor/*webhook*

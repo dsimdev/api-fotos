@@ -119,7 +119,8 @@ Nombres finales de los estados (el brief usa `OK`, `CON_MARCA`, `SIN_IMAGEN`): p
   descargar: solo `http`/`https`; bloquear IPs privadas, loopback y link-local (también después de
   una redirección); límite de tamaño y de tiempo; **detectar el tipo de imagen por los primeros
   bytes**, no por el `Content-Type` (un servidor respondió `application/octet-stream` con una imagen
-  de verdad).
+  de verdad). **Pedir `Accept: image/jpeg,image/png`, nunca WebP:** la CDN de VTEX sirve WebP a un
+  navegador y JPG a un cliente sin ese `Accept`, y Java no lee WebP sin una librería extra.
 - **El EAN es input externo.** Se valida (solo dígitos, largo y dígito verificador) antes de usarlo
   en una consulta, una ruta de archivo o un log. Las rutas de caché las genera el servidor, nunca
   con texto del llamador, y solo se guardan tipos de imagen en whitelist.
@@ -142,8 +143,9 @@ No es UI. Convenciones provisorias, a confirmar al definir el contrato:
 
 ## 8. Código
 
-- **Rutas, archivos, clases, funciones y variables en INGLÉS.** No hay UI: la regla se reduce a
-  "todo en inglés salvo los términos del negocio".
+- **Rutas, archivos, clases, funciones y variables en INGLÉS**, salvo los términos del negocio.
+  **Los textos que ve una persona en el panel van en español (AR)**, sin i18n por ahora, como los
+  otros paneles; los mensajes de la API y de los logs, en inglés.
 - Sin comentarios en el código salvo que el WHY sea no obvio
 - **Términos del negocio, respetarlos tal cual**: EAN y los nombres de sistemas y clientes (GESCOM,
   dyssa, senderolaser). La lista se completa cuando aparezcan más.

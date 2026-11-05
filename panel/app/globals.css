@@ -1,0 +1,251 @@
+/**
+ * Minimal styles for the first screen. The Axum design system (tokens, WCAG AA pairs, light and dark)
+ * lives in api-bonificaciones/panel/app/globals.css and is meant to be copied as is when the real
+ * screens are built, so the internal tools look alike. Until then: tokens only, no literal color
+ * inside a component rule.
+ */
+:root {
+  color-scheme: light dark;
+  --bg: #eef0ec;
+  --card: #ffffff;
+  --border: #ccd3c4;
+  --text-strong: #1b2016;
+  --text-normal: #3d4438;
+  --text-muted: #636b5c;
+  --ok: #2f6b2f;
+  --bad: #b3261e;
+  --primary: #2f6b2f;
+  --primary-text: #ffffff;
+  --link: #2a5d8f;
+  --image-bg: #ffffff;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 999px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e120d;
+    --card: #1a201a;
+    --border: #5f6b52;
+    --text-strong: #f0f3ec;
+    --text-normal: #ced4c8;
+    --text-muted: #9aa292;
+    --ok: #8ed48e;
+    --bad: #ff8a80;
+    --primary: #8ed48e;
+    --primary-text: #0e120d;
+    --link: #8ab8e6;
+    /* Product shots are made for a white background: keep it white in dark mode too. */
+    --image-bg: #ffffff;
+  }
+}
+
+body {
+  margin: 0;
+  padding: 28px 20px;
+  font: 14px/1.5 system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text-normal);
+}
+
+main {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+h1 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--text-strong);
+}
+
+h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: var(--text-strong);
+}
+
+.card {
+  margin-top: 18px;
+  padding: 18px 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 0;
+}
+
+dt {
+  color: var(--text-muted);
+}
+
+dd {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.small {
+  margin: 14px 0 0;
+  font-size: 12px;
+}
+
+.ok {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.bad {
+  color: var(--bad);
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 11px;
+  font: inherit;
+  color: var(--text-strong);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+button {
+  padding: 9px 16px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--primary-text);
+  background: var(--primary);
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.chip {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-normal);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+}
+
+.summary {
+  margin: 16px 0 10px;
+  font-size: 15px;
+  color: var(--text-strong);
+}
+
+.stores {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.store {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+
+.store.not_found,
+.store.error {
+  opacity: 0.8;
+}
+
+.store header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  color: var(--text-strong);
+}
+
+.store .main {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  background: var(--image-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.store .name {
+  margin: 0;
+  color: var(--text-strong);
+  font-weight: 500;
+}
+
+.store p {
+  margin: 0;
+}
+
+.thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.thumbs img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  background: var(--image-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.badge {
+  align-self: flex-start;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1px solid currentColor;
+}
+
+.badge.ok {
+  color: var(--ok);
+}
+
+.muted-badge {
+  color: var(--text-muted);
+}
+
+.bad-badge {
+  color: var(--bad);
+}
+
+a {
+  color: var(--link);
+}
