@@ -1,0 +1,303 @@
+{
+  "_meta": {
+    "fecha": "2026-11-05",
+    "como": "Los 3 primeros candidatos de paginas distintas por EAN (sin redes sociales), con la imagen mirada una por una por una persona (Claude). Es una revision a ojo, no una medicion automatica.",
+    "fuenteDeArticulos": "dyssa, get-articulos v4, primera pagina de 1000, EAN-13 validos que empiezan con 779, 10 repartidos",
+    "totales": {
+      "candidatos": 30,
+      "limpia": 10,
+      "con_marca": 13,
+      "equivocada": 6,
+      "sin_ver": 1
+    }
+  },
+  "articulos": [
+    {
+      "ean": "7790070035707",
+      "codigo": "1000003570",
+      "descripcion": "PATITAS DE POLLO PICANTES 400GRX30",
+      "consulta": "7790070035707 patitas de pollo picantes 400g",
+      "candidatos": [
+        {
+          "fuente": "Super Coco",
+          "pagina": "https://supercoco.com.ar/producto/patitas-de-pollo-picantes-granja-del-sol-400g",
+          "veredicto": "con_marca",
+          "nota": "logo de Super Coco encima"
+        },
+        {
+          "fuente": "Logimol",
+          "pagina": "https://logimol.com.ar/productos/700827-patitas-de-pollo-picantes-x-400gr/",
+          "veredicto": "equivocada",
+          "nota": "es \"Original 1100g\" aunque el titulo dice picantes 400g"
+        },
+        {
+          "fuente": "Coto",
+          "pagina": "https://www.coto.com.ar/productos/patitas-de-pollo-picantes-patitas-400g-/_/R-00592000-00592000-200",
+          "veredicto": "equivocada",
+          "nota": "es una galletita Risky-Dit aunque el titulo dice patitas de pollo"
+        }
+      ]
+    },
+    {
+      "ean": "7790070104311",
+      "codigo": "1000010431",
+      "descripcion": "COCINERO OLIVA PURO 900MLX15",
+      "consulta": "7790070104311 cocinero oliva puro 900ml",
+      "candidatos": [
+        {
+          "fuente": "Jumbo",
+          "pagina": "https://www.jumbo.com.ar/aceite-de-oliva-puro-x-900-ml-cocinero/p",
+          "titulo": "Aceite De Oliva Puro X 900 Ml Cocinero",
+          "veredicto": "con_marca",
+          "nota": "banner lateral de la plantilla de la tienda"
+        },
+        {
+          "fuente": "Cordiez",
+          "pagina": "https://www.cordiez.com.ar/aceite-mezcla-girasol-oliva-cocinero-900cc/p",
+          "titulo": "Aceite Mezcla Girasol Oliva Cocinero 900Cc",
+          "veredicto": "equivocada",
+          "nota": "mezcla girasol y oliva"
+        },
+        {
+          "fuente": "Carrefour",
+          "pagina": "https://www.carrefour.com.ar/aceite-de-oliva-extra-virgen-cocinero-pet-900-ml-778800/p",
+          "titulo": "Aceite de oliva extra virgen Cocinero pet 900 ml",
+          "veredicto": "equivocada",
+          "nota": "extra virgen, no puro"
+        }
+      ]
+    },
+    {
+      "ean": "7790093527784",
+      "codigo": "1000011047",
+      "descripcion": "CAFAYATE TERROIR ALT TORRONTES 750MLX6",
+      "consulta": "7790093527784 cafayate terroir alt torrontes 750ml",
+      "candidatos": [
+        {
+          "fuente": "Espacio Vino",
+          "pagina": "https://www.espaciovino.com.ar/vinos-ficha/Cafayate-Terroir-de-Altura-Torrontes",
+          "titulo": "Cafayate Terroir de Altura Torrontés de Etchart - Comprar vinos al mejor  precio - espaciovino - Vinoteca online",
+          "veredicto": "con_marca",
+          "nota": "marca de agua tenue abajo"
+        },
+        {
+          "fuente": "La Barra",
+          "pagina": "https://labarraccu.com.ar/products/cafayate-terroir-de-altura-torrontes-x-750-ml",
+          "titulo": "Vino Cafayate Terroir de Altura Torrontes 750ml",
+          "veredicto": "limpia",
+          "nota": ""
+        },
+        {
+          "fuente": "El Ahorro Online",
+          "pagina": "https://elahorroonline.com.ar/producto/vino-cafayate-terroir-de-altura-torrontes-750ml/",
+          "titulo": "VINO CAFAYATE TERROIR DE ALTURA TORRONTÉS 750ML - El Ahorro Online",
+          "veredicto": "con_marca",
+          "nota": "banner rojo y circulo amarillo"
+        }
+      ]
+    },
+    {
+      "ean": "7790070337016",
+      "codigo": "1000033701",
+      "descripcion": "MATARAZZO LASAGNA FORT 250GRX28",
+      "consulta": "7790070337016 matarazzo lasagna fort 250gr",
+      "candidatos": [
+        {
+          "fuente": "ATOMO online",
+          "pagina": "https://atomoconviene.com/atomo-ecommerce/pastas-secas-guiseras/30922-lasagna-matarazzo-fort-250-grs--7790070337016.html",
+          "titulo": "LASAGNA MATARAZZO FORT 250 GRS",
+          "veredicto": "limpia",
+          "nota": ""
+        },
+        {
+          "fuente": "Promoductos",
+          "pagina": "https://promoductos.com.ar/product/7894",
+          "titulo": "Lasagna Matarazzo Fort: Pasta Seca Rellena de Calidad Premium",
+          "veredicto": "limpia",
+          "nota": ""
+        },
+        {
+          "fuente": "Angelita Golosinas",
+          "pagina": "https://angelitagolosinas.com.ar/Lasagna_Matarazzo_250Gr_Cod_12238_-12238.shtml",
+          "titulo": "Angelita Golosinas Producto: Lasagna Matarazzo 250gr (28) 7790070337016",
+          "veredicto": "limpia",
+          "nota": "mucho margen blanco alrededor"
+        }
+      ]
+    },
+    {
+      "ean": "7790070433022",
+      "codigo": "1000043302",
+      "descripcion": "EXQUISITA POLVO CHOCOLATADO 300GRX12",
+      "consulta": "7790070433022 exquisita polvo chocolatado 300gr",
+      "candidatos": [
+        {
+          "fuente": "Jumbo",
+          "pagina": "https://www.jumbo.com.ar/polvo-chocolatado-exquisita-x-300-gr/p",
+          "titulo": "Polvo Chocolatado Exquisita X 300 Gr",
+          "veredicto": "con_marca",
+          "nota": "banner lateral"
+        },
+        {
+          "fuente": "Pricely",
+          "pagina": "https://pricely.ar/product/7790070433022",
+          "titulo": "Cacao Polvo Para Chocolatada Exquisita 300g · Pricely",
+          "veredicto": "limpia",
+          "nota": "solo 256x256"
+        },
+        {
+          "fuente": "Mercado Libre",
+          "pagina": "https://www.mercadolibre.com.ar/cacao-en-polvo-exquisita-x-300g/p/MLA44975966",
+          "titulo": "Cacao En Polvo Exquisita X 300g | MercadoLibre",
+          "veredicto": "equivocada",
+          "nota": "es Toddy 360g aunque el titulo dice Exquisita"
+        }
+      ]
+    },
+    {
+      "ean": "7790070760746",
+      "codigo": "1000076074",
+      "descripcion": "EMILIA CHARDONNAY NUEVO 750MLX6",
+      "consulta": "7790070760746 emilia chardonnay nuevo 750ml",
+      "candidatos": [
+        {
+          "fuente": "Carrefour",
+          "pagina": "https://www.carrefour.com.ar/vino-blanco-sauvignon-blanc-emilia-750-ml-722949/p",
+          "titulo": "Vino blanco Chardonnay Emilia 750 ml - Carrefour",
+          "veredicto": "limpia",
+          "nota": ""
+        },
+        {
+          "fuente": "buscavinos.com.ar",
+          "pagina": "https://buscavinos.com.ar/vino/vino-emilia-chardonnay-750ml/7790070760746",
+          "titulo": "Vino Emilia Chardonnay 750ml | BuscaVinos",
+          "veredicto": "con_marca",
+          "nota": "recorte de la etiqueta con banners"
+        },
+        {
+          "fuente": "Borrachines",
+          "pagina": "https://borrachines.com.ar/producto/emilia-chardonnay-750ml/",
+          "titulo": "EMILIA CHARDONNAY 750ML - Borrachines",
+          "veredicto": "limpia",
+          "nota": "etiqueta vieja (cosecha 2017); dyssa dice NUEVO"
+        }
+      ]
+    },
+    {
+      "ean": "7798126073437",
+      "codigo": "1200008665",
+      "descripcion": "GAONA SABORES DE VIDA CHIPS DDL POCKET 100GRX24",
+      "consulta": "7798126073437 gaona sabores de vida chips ddl pocket 100gr",
+      "candidatos": [
+        {
+          "fuente": "Mercado Libre",
+          "pagina": "https://www.mercadolibre.com.ar/galletitas-gaona-sabores-de-la-vida-coco-chips-ddl-x-100-gr/p/MLA28852482",
+          "titulo": "Galletitas Gaona Sabores De La Vida Coco Chips Ddl X 100 Gr | MercadoLibre",
+          "veredicto": "limpia",
+          "nota": "500x249"
+        },
+        {
+          "fuente": "Farmanor",
+          "pagina": "https://www.farmanor.com.ar/shop/product/galletas-sabores-de-la-vida-avena-y-chips-x-100-gr-WS1524091",
+          "titulo": "GALLETAS SABORES DE LA VIDA AVENA Y CHIPS | x 100 gr | , Gaona Galletas y  Bizcochos Dulces - Farmanor",
+          "veredicto": "sin_ver",
+          "nota": "el servidor respondio application/octet-stream"
+        },
+        {
+          "fuente": "Mercado Libre",
+          "pagina": "https://www.mercadolibre.com.ar/galletitas-gaona-sabores-de-la-vida-avena-y-chips-x-100-gr/p/MLA28862735",
+          "titulo": "Galletitas Gaona Sabores De La Vida Avena Y Chips X 100 Gr | MercadoLibre",
+          "veredicto": "equivocada",
+          "nota": "avena y chips de chocolate, no DDL"
+        }
+      ]
+    },
+    {
+      "ean": "7793913002447",
+      "codigo": "2000001274",
+      "descripcion": "TREGAR LECHE UAT 0% GRASA 1000MLX12",
+      "consulta": "7793913002447 tregar leche uat 0% grasa 1000ml",
+      "candidatos": [
+        {
+          "fuente": "Josimar",
+          "pagina": "https://www.josimar.com.ar/leche-descremada-0-grasa-uat-tregar-1-lt/p",
+          "titulo": "Leche Descremada 0% Grasa Uat Tregar 1 Lt | Josimar -",
+          "veredicto": "con_marca",
+          "nota": "iconos y texto a los costados"
+        },
+        {
+          "fuente": "Supermercado - California S.A.",
+          "pagina": "https://www.californiasa.com.ar/producto/leche-tregar-0-t-graso-desc-1lt/",
+          "titulo": "LECHE TREGAR 0% T.GRASO DESC.1lt. - California S.A.",
+          "veredicto": "limpia",
+          "nota": ""
+        },
+        {
+          "fuente": "Tregar",
+          "pagina": "https://www.tregar.com.ar/product/leches-uat-0-grasas/",
+          "titulo": "Leche Larga Vida – Tregar",
+          "veredicto": "limpia",
+          "nota": "fondo celeste"
+        }
+      ]
+    },
+    {
+      "ean": "7790310984314",
+      "codigo": "300052757",
+      "descripcion": "PEP RUEDITAS 74GRX36",
+      "consulta": "7790310984314 pep rueditas 74gr",
+      "candidatos": [
+        {
+          "fuente": "Josimar",
+          "pagina": "https://www.josimar.com.ar/pep-rueditas-84gr-2/p",
+          "titulo": "Ruedita Pep 74 gr -",
+          "veredicto": "con_marca",
+          "nota": "banner lateral"
+        },
+        {
+          "fuente": "Carrefour",
+          "pagina": "https://www.carrefour.com.ar/snack-sabor-a-pizza-pep-rueditas-74-g-676530/p",
+          "titulo": "Snack sabor a pizza Pep rueditas 74 g.",
+          "veredicto": "con_marca",
+          "nota": "banner lateral"
+        },
+        {
+          "fuente": "Jumbo",
+          "pagina": "https://www.jumbo.com.ar/snack-pep-rueditas-pizza-74-g/p",
+          "titulo": "Snack Rueditas Sabor Pizza 74 Grs Pep",
+          "veredicto": "con_marca",
+          "nota": "banner lateral"
+        }
+      ]
+    },
+    {
+      "ean": "7790310985502",
+      "codigo": "300065285",
+      "descripcion": "LAYS KETCHUP 77GX25X1",
+      "consulta": "7790310985502 lays ketchup 77g",
+      "candidatos": [
+        {
+          "fuente": "Punto de Venta",
+          "pagina": "https://puntodeventa.ar/producto/papas-fritas-lays-ketchup-85g/",
+          "titulo": "Papas Fritas Lays Ketchup 77g – Punto de Venta",
+          "veredicto": "con_marca",
+          "nota": "logo y marca de agua de la tienda"
+        },
+        {
+          "fuente": "El Ahorro Online",
+          "pagina": "https://elahorroonline.com.ar/producto/lays-ketchup-77g/",
+          "titulo": "PAPAS FRITAS LAY'S KETCHUP 77G - El Ahorro Online",
+          "veredicto": "con_marca",
+          "nota": "banner y circulo amarillo"
+        },
+        {
+          "fuente": "Carrefour",
+          "pagina": "https://www.carrefour.com.ar/papas-fritas-sabor-a-ketchup-lays-77-g-721963/p",
+          "titulo": "Papas fritas sabor a ketchup Lays 77 g.",
+          "veredicto": "con_marca",
+          "nota": "banner lateral"
+        }
+      ]
+    }
+  ]
+}

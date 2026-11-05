@@ -1,0 +1,72 @@
+[
+  {
+    "codigo": "1000003570",
+    "descripcion": "PATITAS DE POLLO PICANTES 400GRX30",
+    "ean": "7790070035707",
+    "codigoRubro": "dyssa-05",
+    "codigoMarca": "dyssa-344"
+  },
+  {
+    "codigo": "1000010431",
+    "descripcion": "COCINERO OLIVA PURO 900MLX15",
+    "ean": "7790070104311",
+    "codigoRubro": "dyssa-01",
+    "codigoMarca": "dyssa-322"
+  },
+  {
+    "codigo": "1000011047",
+    "descripcion": "CAFAYATE TERROIR ALT TORRONTES 750MLX6",
+    "ean": "7790093527784",
+    "codigoRubro": "dyssa-07",
+    "codigoMarca": "dyssa-366"
+  },
+  {
+    "codigo": "1000033701",
+    "descripcion": "MATARAZZO LASAGNA FORT 250GRX28",
+    "ean": "7790070337016",
+    "codigoRubro": "dyssa-01",
+    "codigoMarca": "dyssa-360"
+  },
+  {
+    "codigo": "1000043302",
+    "descripcion": "EXQUISITA POLVO CHOCOLATADO 300GRX12",
+    "ean": "7790070433022",
+    "codigoRubro": "dyssa-03",
+    "codigoMarca": "dyssa-332"
+  },
+  {
+    "codigo": "1000076074",
+    "descripcion": "EMILIA CHARDONNAY NUEVO 750MLX6",
+    "ean": "7790070760746",
+    "codigoRubro": "dyssa-07",
+    "codigoMarca": "dyssa-330"
+  },
+  {
+    "codigo": "1200008665",
+    "descripcion": "GAONA SABORES DE VIDA CHIPS DDL POCKET 100GRX24",
+    "ean": "7798126073437",
+    "codigoRubro": "dyssa-02",
+    "codigoMarca": "dyssa-341"
+  },
+  {
+    "codigo": "2000001274",
+    "descripcion": "TREGAR LECHE UAT 0% GRASA 1000MLX12",
+    "ean": "7793913002447",
+    "codigoRubro": "dyssa-04",
+    "codigoMarca": "dyssa-392"
+  },
+  {
+    "codigo": "300052757",
+    "descripcion": "PEP RUEDITAS 74GRX36",
+    "ean": "7790310984314",
+    "codigoRubro": "pepsico-100",
+    "codigoMarca": "pepsico-12"
+  },
+  {
+    "codigo": "300065285",
+    "descripcion": "LAYS KETCHUP 77GX25X1",
+    "ean": "7790310985502",
+    "codigoRubro": "pepsico-100",
+    "codigoMarca": "pepsico-10"
+  }
+]
