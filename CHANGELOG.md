@@ -36,6 +36,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning:
   and only `codbarras` was recognised. The singular forms were added; `codigo` was already the SKU.
   `SpreadsheetReaderTest.readsTheArticleExportOfAxumWhereCodigoIsTheSkuAndCodbarraTheEan` and
   `theAxumHeadersAreRecognisedInUpperCaseAndInACsvToo`.
+- Seven valid barcodes in Axum's export were rejected as invalid: they carry non-breaking spaces (U+00A0) before or after the
+  digits, and `String.trim()` leaves those alone. Cells are now trimmed of Unicode spaces, zero-width characters and a stray
+  BOM, at the ends only; no digit is ever guessed. `SpreadsheetReaderTest.nonBreakingSpacesAroundACellAreWhitespaceToo`.
+
+### Security
+- Client article exports (they carry costs and price lists) sit in the repo root when dropped there: `/*.csv` is now git-ignored,
+  next to the `*.xlsx` rule. It was caught before any commit, the file had never been staged.
 
 ## [0.2.0] - 2026-11-06
 

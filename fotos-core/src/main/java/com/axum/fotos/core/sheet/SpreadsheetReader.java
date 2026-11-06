@@ -90,7 +90,24 @@ public final class SpreadsheetReader {
     }
 
     private static String cell(List<String> cells, int index) {
-        return index < cells.size() ? cells.get(index).trim() : "";
+        return index < cells.size() ? clean(cells.get(index)) : "";
+    }
+
+    /**
+     * Trims what a person would not see: ordinary whitespace and also the non-breaking and other Unicode spaces
+     * ({@code String.trim()} leaves U+00A0 alone, and Axum's export has barcodes padded with it), zero-width
+     * characters and a stray byte order mark. Only the ends: nothing inside a value is touched.
+     */
+    static String clean(String value) {
+        int start = 0, end = value.length();
+        while (start < end && invisible(value.charAt(start))) start++;
+        while (end > start && invisible(value.charAt(end - 1))) end--;
+        return value.substring(start, end);
+    }
+
+    private static boolean invisible(char c) {
+        return c <= ' ' || Character.isWhitespace(c) || Character.isSpaceChar(c) || c == '​' || c == '‌'
+                || c == '‍' || c == '﻿';
     }
 
     /** Lower case, no accents, punctuation and runs of spaces collapsed to one space. */

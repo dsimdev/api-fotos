@@ -103,6 +103,26 @@ class SpreadsheetReaderTest {
         assertEquals(List.of(new ProductRow(2, "Polvo", "1000", "7791337010604"), new ProductRow(3, "Sin codigo de barras", "1001", "")), rows);
     }
 
+    /**
+     * Axum's export has barcodes with non-breaking spaces (U+00A0) before or after the digits: seven real EANs were being
+     * rejected as invalid. String.trim() does not remove them. Only whitespace goes: no digit is ever guessed.
+     */
+    @Test
+    void nonBreakingSpacesAroundACellAreWhitespaceToo() throws IOException {
+        var file = dir.resolve("articulos.csv");
+        Files.writeString(file, "codigo,descripcion,codbarra\n"
+                + "\"7000016587\",\"JUGO\",7798085681490   \n"
+                + "\"9000004087\",\"AGUA\", 7790250040873\n"
+                + "​1001﻿,\"UN ESPACIO FINO \",7791337010604\n", StandardCharsets.UTF_8);
+
+        var rows = SpreadsheetReader.read(file);
+
+        assertEquals("7798085681490", rows.get(0).ean());
+        assertEquals("7790250040873", rows.get(1).ean());
+        assertEquals("1001", rows.get(2).sku(), "zero-width characters and a BOM in the middle of a file go too");
+        assertEquals("UN ESPACIO FINO", rows.get(2).description());
+    }
+
     @Test
     void aMissingColumnIsReportedByNameTogetherWithWhatWasFound() throws IOException {
         var file = xlsx(sst("Descripción", "Precio", "EAN"),
