@@ -23,7 +23,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest(properties = "fotos.demo.enabled=true")
+@SpringBootTest(properties = {"fotos.demo.enabled=true", "server.address=127.0.0.1"})
 @AutoConfigureMockMvc
 class LookupDemoControllerTest {
 

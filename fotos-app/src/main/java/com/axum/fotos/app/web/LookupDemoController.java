@@ -11,6 +11,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,10 +39,28 @@ public class LookupDemoController {
 
     private final StoreCatalogs stores;
 
-    LookupDemoController(StoreCatalogs stores) {
+    LookupDemoController(StoreCatalogs stores, @Value("${server.address:}") String serverAddress) {
+        requireLoopback(serverAddress);
         this.stores = stores;
         log.warn("The EAN lookup demo is ENABLED (fotos.demo.enabled=true): it has no authentication. "
                 + "Never leave it on in a deployed instance.");
+    }
+
+    /**
+     * The demo has no authentication and makes requests to third parties, so it REFUSES TO START unless
+     * the server listens on this machine alone. A warning in the log is not enough: nobody reads the
+     * startup log of a service that came up fine. Without {@code server.address} Tomcat listens on every
+     * interface, which is exactly what this guard exists to stop.
+     */
+    static void requireLoopback(String serverAddress) {
+        var address = serverAddress == null ? "" : serverAddress.trim();
+        boolean loopback = address.equals("127.0.0.1") || address.equalsIgnoreCase("localhost")
+                || address.equals("::1") || address.equals("[::1]");
+        if (!loopback) {
+            throw new IllegalStateException(
+                    "fotos.demo.enabled=true has no authentication, so the server must listen on this machine "
+                            + "only. Set server.address=127.0.0.1 (SERVER_ADDRESS=127.0.0.1), or turn the demo off.");
+        }
     }
 
     @GetMapping("/admin/v1/lookup")
