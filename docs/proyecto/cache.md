@@ -73,8 +73,10 @@ Leído en `bonif-app/.../gescom/CatalogoGescom`, `RefrescadorDeCaches`, `EstadoD
 - **No hay entrada y ninguna tienda contesta** (todas con error): **no** se guarda como "no está". Se responde
   `SOURCES_UNAVAILABLE`, con 30 s de enfriamiento por EAN. Guardar un "no está" por una caída de red sería mentirle
   a la tienda durante días.
-- **Todas las tiendas contestaron y ninguna lo tiene:** sí es un resultado: `NOT_FOUND`, que se vuelve a intentar
-  pasados N días (los comercios cargan productos nuevos).
+- **Todas las tiendas contestaron y ninguna lo tiene:** sí es un resultado: `NOT_FOUND`. **Nosotros no lo
+  reintentamos solos** (decidido el 2026-11-06): lo reintenta la tienda cuando quiere, con una operación explícita
+  de refresco (ver `contrato-api.md`). Si alguna tienda falló y las otras dijeron que no, no sabemos si está: no se
+  guarda como `NOT_FOUND`, igual que una caída total.
 
 ### 4.4 La barrida de la tienda
 
@@ -87,9 +89,10 @@ por fuente que ya existen (`StoreRateLimiter`, `StoreResilience`) más un tope d
 ### 4.5 Refrescar
 
 - **Botón en el panel**, por EAN (y por lote), que usa el mismo camino que cualquier recarga y recarga en el lugar.
-- **Refresco programado: probablemente ninguno al principio.** Allá existe porque el dato cambia todos los días; acá
-  una imagen casi no cambia y cada recarga cuesta pedidos a un tercero. Se puede sumar uno de baja frecuencia si la
-  medición lo justifica.
+- **Ningún refresco programado.** Una imagen `READY` **nunca vence** y un `NOT_FOUND` no se reintenta solo
+  (decidido el 2026-11-06): cada recarga cuesta pedidos a un tercero, y quien sabe que algo cambió (un envase nuevo,
+  un producto recién cargado) es la tienda. Quien quiera refrescar usa la operación explícita (la API para la tienda,
+  el botón del panel para nosotros), con un enfriamiento por EAN para que un bucle del consumidor no le pegue a VTEX.
 - **No hay refresco al arrancar:** la caché persiste, no hay nada que calentar.
 
 ### 4.6 Medir y avisar
@@ -101,15 +104,31 @@ hermano: **cada cambio que toque el camino de una consulta lleva un número ante
 
 ## 5. Preguntas abiertas
 
-1. **¿Cuándo vence una imagen `READY`?** Opciones: nunca (solo el botón), o a los N días (propongo 180). Mi
-   inclinación es nunca vence sola, pero lo decidís vos: es la regla que más afecta cuántos pedidos recibe VTEX.
-2. **¿Cada cuántos días se reintenta un `NOT_FOUND`?** Propongo 7.
-3. **Tamaño de la barrida:** cuántos códigos tiene senderolaser y cada cuánto recorre. Decide si `LOADING` alcanza o
-   si hace falta algo más.
-4. **¿Dónde en disco y con qué respaldo?** La caché es persistente, así que perder el disco es volver a consultar a
-   VTEX por todo.
+1. **Decidido (2026-11-06): una imagen `READY` nunca vence.**
+2. **Decidido (2026-11-06): un `NOT_FOUND` no lo reintentamos nosotros;** lo reintenta la tienda con una operación
+   explícita.
+3. **Respondido: la barrida son 130 productos** (la planilla de la tienda: 130 EAN, todos válidos y sin repetidos).
+   `LOADING` alcanza de sobra y la carga completa cabe en minutos.
+4. **Respondido: la imagen la guardamos nosotros y también la tienda** (sección 6).
 5. **Plazo antes de responder `LOADING`** (propongo 8 s) y el `Retry-After` (propongo 15 s, como Chess).
 6. **¿La caché se comparte entre clientes?** Propongo que sí: la imagen es del producto. Lo que sería por cliente es,
    si se usa, el registro de qué eligió cada uno.
 7. **Tope de disco y qué pasa al llenarse.** Propongo alertar y no desalojar solo: una imagen desalojada es un pedido
    más a VTEX.
+8. **¿Dónde en disco y con qué respaldo?** La caché es persistente, así que perder el disco es volver a consultar a
+   VTEX por todo. Son pocos datos (sección 6), así que un respaldo simple alcanza.
+
+## 6. ¿Quién guarda la imagen? Las dos partes, cada una por su motivo
+
+- **Nosotros guardamos una copia** (la caché persistente). Sin ella no se cumple el principio de la sección 1: cada
+  barrida, cada reinicio y cada refresco volverían a pedirle a VTEX lo que ya bajamos, y las URLs de los comercios
+  mueren. También es lo que hace estable la respuesta: el mismo EAN devuelve la misma imagen mañana.
+- **La tienda guarda la suya** (sus bytes, en su SQL), una vez que una persona del cliente la confirmó. Es la foto
+  de su producto, la que publica, y no puede depender de que nuestro servicio esté disponible para mostrarla.
+
+**Cuánto ocupa lo nuestro**, medido con la muestra de 40 EAN: unas 3,3 imágenes distintas por EAN en la posición 0 de
+las tiendas, de 144 KB en promedio, más la versión recortada de las que traen banner. **Unos 0,7 MB por EAN**, o sea
+**unos 90 MB para los 130 productos de la tienda**. El costo en disco no es un argumento para no guardarlas.
+
+**Derechos:** guardar una copia en nuestro servidor es el mismo riesgo que la tienda tiene al publicarla, y sigue sin
+estar resuelto quién lo asume (pregunta 5 del contrato).

@@ -28,5 +28,10 @@ entrega-servidor/*.jar
 *.rar
 *.zip
 
+# Spreadsheets with client data (EAN lists, price lists): never versioned.
+*.xlsx
+*.xlsm
+*.xls
+
 # The Slack webhook is a SECRET: never in the repo, even if someone copies it next to the package.
 entrega-servidor/*webhook*

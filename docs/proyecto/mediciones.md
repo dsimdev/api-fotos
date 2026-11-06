@@ -213,3 +213,58 @@ node contact-sheet.mjs <pares.json> out/vtex-40/sheet 6       # original y recor
 
 Ojo: `detect-banner.mjs` pisa el `banner-detect.json` de la carpeta anterior si se lo corre sobre otra carpeta; usar
 `DETECT_OUT=<archivo>` para no perder el resultado.
+
+## Fase A4 — el catálogo real de la tienda: 130 productos (2026-11-06)
+
+La planilla de la tienda (`eans danone.xlsx`: descripción, SKU y EAN; **130 EAN, todos de 13 dígitos, todos con
+dígito verificador válido, sin repetidos**; familias de lácteos: yogures, postres, quesos untables y leches). La
+planilla es un dato del cliente y no se versiona (`.gitignore` ignora las planillas).
+
+**Método:** las 7 tiendas a la vez por cada EAN y una pausa de 1 s: cada tienda recibe unas 0,7 consultas por
+segundo. La medición se detiene sola si una tienda contesta 401, 403 o 429, y no insiste (no pasó).
+
+| | Resultado |
+|---|---|
+| Consultas | 910, **todas con HTTP 200** (ningún 429 ni 403) |
+| Latencia | mediana 274 ms, p95 549 ms, máxima 1261 ms |
+| EAN encontrados en al menos una tienda | **125 de 130 (96%)** |
+| Por tienda | Carrefour 125, Jumbo 122, Disco 122, Vea 122, Masonline 116, Josimar 108, Cordiez 76 |
+| Tiendas por EAN encontrado | 6,3 en promedio |
+
+**Los 5 que no están:** 4 son **marca propia de La Anónima** (batido FFS 120 g frutilla y vainilla, sachet 900 g
+vainilla y frutilla) y el quinto es un Casancrem Sachetón de 4 kg (formato institucional). Tiene sentido: la marca
+propia de una cadena solo la vende esa cadena.
+
+**Calidad de la imagen (posición 0 de cada tienda):**
+
+| | |
+|---|---|
+| Imágenes bajadas | 791, de las cuales **749 traen el panel de banner (95%)** |
+| EAN con alguna imagen limpia | 29 de 130 (22%) |
+| Imágenes con panel que se pudieron recortar | 700 de 750 |
+| EAN con banner y recortable | 93 de 96 |
+| **EAN con un frente utilizable (limpio o recortado)** | **122 de 130 (94%)**, 98% de los encontrados |
+| Sin recorte posible | Casancrem Sachetón 2 kg, y LS Sachet Entero 1300 g vainilla y frutilla (el panel toca al envase) |
+
+- **En esta marca la plantilla con banner es casi universal:** el recorte no es un extra, es el camino principal.
+- **Revisado a ojo por Claude (sin independencia): 12 de 12 recortes bien** (uno por familia, incluido el panel
+  inferior del Flan Ser) y **12 de 12 "limpias" realmente limpias** (una por familia). Son muestras chicas.
+- **WebP:** solo **Josimar** ignora el `Accept` y sirve WebP (79 de 791 imágenes); las otras seis sirven JPG.
+  Ningún EAN depende únicamente de una imagen WebP.
+- Limitaciones: una sola marca, productos refrigerados, y el recorte quedó validado a ojo en una muestra.
+
+**Prototipo de la entrega** (`spikes/measure-sources/make-gallery.mjs`, salida en `out/danone/`, ignorada por git):
+una carpeta `entrega/` con **122 fotos JPEG nombradas con el SKU** (24,5 MB), un `reporte.csv` con el estado de
+cada producto y una `galeria.html` para mirarlas de corrido. La regla para elegir la foto es la del contrato
+(sección 4): una original limpia gana a una recortada, después al menos 500 px, después la más grande.
+
+### Cómo repetirlo
+
+```
+VTEX_HOSTS="www.jumbo.com.ar,www.carrefour.com.ar,www.masonline.com.ar,www.josimar.com.ar,www.cordiez.com.ar,www.disco.com.ar,www.vea.com.ar" \
+  OUT_NAME=danone PARALLEL_HOSTS=1 SKIP_FIRST_IMAGE=1 node measure-vtex.mjs out/danone-130.json
+OUT_NAME=danone CONCURRENCY=6 PAUSE_MS=200 node download-store-images.mjs
+node detect-banner.mjs out/danone/images-by-store
+node crop-banner.mjs out/danone/images-by-store out/danone/banner-detect.json out/danone/cropped
+OUT_NAME=danone node make-gallery.mjs
+```

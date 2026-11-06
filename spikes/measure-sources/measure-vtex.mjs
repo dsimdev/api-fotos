@@ -9,7 +9,12 @@ const selection = process.argv[2] || join(import.meta.dirname, '..', '..', 'docs
 // VTEX_HOSTS (comma separated) and OUT_NAME (folder under out/) can be overridden from the environment.
 const HOSTS = (process.env.VTEX_HOSTS || 'www.jumbo.com.ar,www.carrefour.com.ar,www.disco.com.ar,www.vea.com.ar,diaonline.supermercadosdia.com.ar,www.masonline.com.ar').split(',');
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
-const PAUSE_MS = 1000;
+const PAUSE_MS = Number(process.env.PAUSE_MS || 1000);
+// PARALLEL_HOSTS=1: ask every store for the same EAN at once, then pause. Each store still sees a single
+// request at a time, about one every (latency + PAUSE_MS), and the run is as long as the slowest store.
+const PARALLEL = process.env.PARALLEL_HOSTS === '1';
+// SKIP_FIRST_IMAGE=1: do not download the first image here (download-store-images.mjs does it later).
+const SKIP_FIRST_IMAGE = process.env.SKIP_FIRST_IMAGE === '1';
 const out = join(import.meta.dirname, 'out', process.env.OUT_NAME || 'vtex');
 mkdirSync(join(out, 'images'), { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -71,17 +76,30 @@ async function download(url, ean) {
 
 const items = JSON.parse(readFileSync(selection, 'utf8'));
 const results = [];
+let stopped = null;
 for (const a of items) {
-  const perHost = [];
-  for (const host of HOSTS) {
-    perHost.push(await lookup(host, a.ean));
+  let perHost = [];
+  if (PARALLEL) {
+    perHost = await Promise.all(HOSTS.map((host) => lookup(host, a.ean)));
     await sleep(PAUSE_MS);
+  } else {
+    for (const host of HOSTS) {
+      perHost.push(await lookup(host, a.ean));
+      await sleep(PAUSE_MS);
+    }
   }
   const first = perHost.find((h) => h.exactEan && h.images?.length);
-  const image = first ? await download(first.images[0], a.ean) : null;
+  const image = first && !SKIP_FIRST_IMAGE ? await download(first.images[0], a.ean) : null;
+  // A third party that says "slow down" or "go away" ends the run: a measurement never insists.
+  const refusal = perHost.find((h) => [401, 403, 429].includes(h.status));
+  if (refusal) stopped = `${refusal.host} answered ${refusal.status} at EAN ${results.length + 1} of ${items.length}`;
   results.push({ ean: a.ean, descripcion: a.descripcion, stratum: a.stratum, stores: perHost, bestStore: first?.host || null, image });
   const found = perHost.filter((h) => h.exactEan).map((h) => h.host.replace(/^www\./, '').split('.')[0]);
   console.log(`${a.ean} | ${a.descripcion.slice(0, 38).padEnd(38)} | stores: ${found.length}/${HOSTS.length} ${found.join(',') || '-'}${image?.file ? ` | img ${image.type} ${image.w || '?'}x${image.h || '?'} ${Math.round(image.bytes / 1024)}KB` : ''}`);
+  if (stopped) {
+    console.log(`\nSTOPPED, not insisting: ${stopped}`);
+    break;
+  }
 }
 
 const ms = results.flatMap((r) => r.stores.map((s) => s.ms)).sort((x, y) => x - y);

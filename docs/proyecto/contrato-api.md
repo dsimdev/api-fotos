@@ -31,6 +31,7 @@ ese tenant.
 | `GET /images/{ean}` | El resultado de un EAN: estado, recomendada y candidatos (JSON, sin bytes) |
 | `GET /images/{ean}/candidates/{candidateId}` | Los **bytes** de un candidato (JPEG o PNG), desde nuestra copia |
 | `POST /images/batch` | Lo mismo para una lista de EAN (`{"eans": [...]}`), con un tope de tamaño por pedido a definir |
+| `POST /images/{ean}/refresh` (y una versión por lotes) | **Vuelve a consultar las tiendas para ese EAN.** Es la única forma de reintentar un "sin imagen" o de actualizar una imagen cuyo envase cambió: **nosotros no refrescamos nada solos**. Lleva un enfriamiento por EAN para que un bucle del consumidor no le pegue a VTEX |
 | `PUT /images/{ean}/selection` | **Opcional, ver 7.1.** Registra qué candidato eligió la tienda |
 
 ## 3. Respuesta de `GET /images/{ean}`

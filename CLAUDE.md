@@ -5,6 +5,14 @@ demás candidatos. Primer cliente: la tienda `senderolaser`, que no tiene imáge
 lo consume el backend de la tienda, que recorre todos sus códigos, y una persona del cliente confirma
 o cambia cada imagen en el sistema de la tienda. Es una API con un panel de administración embebido.
 
+> **EN REVISIÓN (2026-11-06): el modelo cambia.** El usuario propuso que esto **no sea un servicio más
+> en el servidor de la tienda** sino una **herramienta local**, que corre en su máquina cuando un cliente
+> le pide fotos: el cliente pasa una planilla con EAN y SKU, la herramienta arma una carpeta con una foto
+> por producto **nombrada con el SKU**, y el usuario se la entrega a la tienda para que la suba. Lo medido
+> sigue valiendo. Lo que depende de hospedar un servicio (API con clave por cliente, SQL Server, login,
+> deploy, alertas, `LOADING`) queda **en suspenso hasta decidirlo**: no construirlo. Análisis y preguntas:
+> `docs/proyecto/modelo-local.md`. Lo que sigue de este archivo describe el modelo alojado.
+
 **Etapa actual (2026-11-06): primer corte en construcción.** Hay un esqueleto Java con el panel
 embebido y el conector de las tiendas VTEX (rama `feat/skeleton`); todavía no hay caché persistente,
 API con clave ni servidor. Ya se midió la fuente de las imágenes (`docs/proyecto/mediciones.md`).
@@ -106,8 +114,9 @@ Propias del dominio (**provisorias**: se confirman al definir el contrato de la 
 - **Cada candidato lleva su traza**: tienda y página del comercio de donde salió, posición en la
   tienda, resolución y si se le quitó el banner; y la recomendada dice por qué se eligió. Sirve para
   auditar y para que quien la cambie decida con información. Es la idea de "traza" de MotorFiscal.
-- **Siempre se contesta desde NUESTRA caché; VTEX solo se consulta si el EAN no está** (o su entrada
-  venció, o se pidió refrescar). Decidido el 2026-11-06. La caché es por EAN, compartida entre
+- **Siempre se contesta desde NUESTRA caché; VTEX solo se consulta si el EAN no está.** Las entradas
+  **nunca vencen** y un EAN sin imagen no se reintenta solo: solo se vuelve a consultar si la tienda
+  (operación explícita de la API) o el panel piden refrescar. Decidido el 2026-11-06. La caché es por EAN, compartida entre
   clientes (las imágenes son del producto, no del cliente), con la imagen en almacenamiento propio:
   no se enlaza la URL del comercio, esas URLs mueren. **El molde es el caché de `api-bonificaciones`**
   (una sola carga por clave, no hacer esperar un request por una descarga larga, servir lo viejo si
@@ -129,8 +138,10 @@ Nombres finales de los estados (el brief usa `OK`, `CON_MARCA`, `SIN_IMAGEN`): p
   descargar: solo `http`/`https`; bloquear IPs privadas, loopback y link-local (también después de
   una redirección); límite de tamaño y de tiempo; **detectar el tipo de imagen por los primeros
   bytes**, no por el `Content-Type` (un servidor respondió `application/octet-stream` con una imagen
-  de verdad). **Pedir `Accept: image/jpeg,image/png`, nunca WebP:** la CDN de VTEX sirve WebP a un
-  navegador y JPG a un cliente sin ese `Accept`, y Java no lee WebP sin una librería extra.
+  de verdad). **Pedir `Accept: image/jpeg,image/png`:** seis de las siete tiendas lo honran y sirven
+  JPG, pero **Josimar lo ignora y sirve WebP** (79 de 791 imágenes en la medición de los 130
+  productos). Java no lee WebP sin una librería extra, así que el descargador detecta WebP por los
+  bytes y **o la lee (librería) o descarta esa imagen y sigue con otra**, nunca falla la consulta.
 - **El EAN es input externo.** Se valida (solo dígitos, largo y dígito verificador) antes de usarlo
   en una consulta, una ruta de archivo o un log. Las rutas de caché las genera el servidor, nunca
   con texto del llamador, y solo se guardan tipos de imagen en whitelist.
@@ -220,7 +231,10 @@ claves de API, historial de llamadas, índice de la caché por EAN); las imágen
 dónde queda por definir. Fuente principal, ya medida: los **catálogos VTEX de supermercados
 argentinos consultados por EAN** (Jumbo, Carrefour, Disco, Vea, Masonline y tiendas
 regionales como Josimar y Cordiez): coincidencia exacta de EAN, ~0,5 s por consulta, imágenes de
-1000 a 2000 px. Detalle y cifras en `docs/proyecto/mediciones.md`. Idea sugerida, **no decidida**:
+1000 a 2000 px. Detalle y cifras en `docs/proyecto/mediciones.md`. **En el catálogo real de
+senderolaser (130 productos): 96% está en alguna tienda y 94% tiene un frente utilizable; el 95%
+de las imágenes trae el panel de banner, así que el recorte es la ruta principal y no un extra.**
+Idea sugerida, **no decidida**:
 fuentes intercambiables detrás de la misma interfaz, en orden caché propia → VTEX por EAN →
 respaldo por definir (Open Food Facts, SerpApi). Ver `docs/proyecto/origen/` y, cuando exista,
 `docs/proyecto/arquitectura.md`.
