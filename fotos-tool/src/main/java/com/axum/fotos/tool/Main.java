@@ -25,7 +25,7 @@ import java.util.function.Consumer;
  * with one photo per SKU. Everything it prints is for that person, so it is in Spanish.
  *
  * <pre>
- *   fotos-tool &lt;planilla&gt; [--refresh] [--cache &lt;carpeta&gt;] [--salida &lt;carpeta&gt;] [--no-abrir]
+ *   fotos-tool &lt;planilla&gt; [--refresh] [--cache &lt;carpeta&gt;] [--salida &lt;carpeta&gt;] [--paralelo &lt;1-8&gt;] [--no-abrir]
  * </pre>
  *
  * <p>Each run writes a new folder {@code Fotos <date>} INSIDE the folder the program is installed in (the sheet is
@@ -42,6 +42,10 @@ public final class Main {
     interface FinderFactory {
         PhotoFinder create(Path cacheDir, ExecutorService pool) throws IOException;
     }
+
+    /** Products looked up at the same time unless the person says otherwise. */
+    static final int DEFAULT_PARALLEL = 3;
+    static final int MAX_PARALLEL = 8;
 
     private Main() {}
 
@@ -62,6 +66,7 @@ public final class Main {
         Path sheet = null;
         Path cacheDir = null;
         Path outputRoot = null;
+        int parallel = DEFAULT_PARALLEL;
         boolean refresh = false, open = true;
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -70,6 +75,15 @@ public final class Main {
                 case "--cache" -> {
                     if (i + 1 >= args.length) return fail(out, "Falta la carpeta después de --cache.");
                     cacheDir = Path.of(args[++i]);
+                }
+                case "--paralelo" -> {
+                    if (i + 1 >= args.length) return fail(out, "Falta el número después de --paralelo.");
+                    try {
+                        parallel = Integer.parseInt(args[++i]);
+                    } catch (NumberFormatException e) {
+                        return fail(out, "Después de --paralelo va un número de 1 a " + MAX_PARALLEL + ".");
+                    }
+                    if (parallel < 1 || parallel > MAX_PARALLEL) return fail(out, "--paralelo va de 1 a " + MAX_PARALLEL + ".");
                 }
                 case "--salida" -> {
                     if (i + 1 >= args.length) return fail(out, "Falta la carpeta después de --salida.");
@@ -104,17 +118,19 @@ public final class Main {
 
         if (cacheDir == null) cacheDir = defaultCacheDir();
         if (outputRoot == null) outputRoot = installDir != null ? installDir : sheet.toAbsolutePath().getParent();
-        ExecutorService pool = Executors.newFixedThreadPool(8);
+        // Each product asks every store at once, so the store threads scale with how many products run together.
+        ExecutorService pool = Executors.newFixedThreadPool(8 * parallel);
         try {
             long started = System.nanoTime();
             out.println("Planilla: " + sheet.getFileName() + " (" + rows.size() + " productos)");
             out.println("Caché de fotos: " + cacheDir);
             out.println("Las entregas se guardan en: " + outputRoot);
+            out.println("Productos que se consultan a la vez: " + parallel);
             out.println(refresh ? "Se vuelve a consultar todo (--refresh)." : "Lo que ya se bajó antes sale de la caché.");
             out.println();
 
             PhotoFinder finder = factory.create(cacheDir, pool);
-            List<DeliveryLine> lines = BatchRun.run(rows, finder, refresh, (done, total, line, fromCache) ->
+            List<DeliveryLine> lines = BatchRun.run(rows, finder, refresh, parallel, (done, total, line, fromCache) ->
                     out.println(progressLine(done, total, line, fromCache)));
 
             Path folder = DeliveryWriter.newFolder(outputRoot, "Fotos " + LocalDate.now(clock));
@@ -163,11 +179,12 @@ public final class Main {
 
     private static void usage(PrintStream out) {
         out.println("Uso: arrastrá la planilla (.xlsx o .csv, con columnas SKU y EAN) sobre el acceso directo,");
-        out.println("o por consola:  fotos-tool <planilla> [--refresh] [--cache <carpeta>] [--salida <carpeta>] [--no-abrir]");
+        out.println("o por consola:  fotos-tool <planilla> [--refresh] [--cache <carpeta>] [--salida <carpeta>] [--paralelo <1-8>] [--no-abrir]");
         out.println();
         out.println("  --refresh     vuelve a consultar las tiendas por los EAN de esta planilla");
         out.println("  --cache       carpeta donde se guardan las fotos ya encontradas");
         out.println("  --salida      carpeta donde se crea \"Fotos <fecha>\" (por defecto, la carpeta del programa)");
+        out.println("  --paralelo    cuántos productos se consultan a la vez (por defecto " + DEFAULT_PARALLEL + "); más rápido, más tráfico a las tiendas");
         out.println("  --no-abrir    no abre la carpeta al terminar");
     }
 

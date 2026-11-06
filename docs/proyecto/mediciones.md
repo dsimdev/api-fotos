@@ -329,6 +329,7 @@ recortado" había preferido. Medido sobre el catálogo:
 | Tienda de origen | Carrefour 88, Jumbo 15, Masonline 12, Cordiez 6, Josimar 3 |
 | Con aviso en el reporte | 3 (640010, 958510, 966512: fotos blandas) |
 | Elecciones distintas de la entrega revisada antes | 39 de 124 |
+| Con 3 productos a la vez (`--paralelo 3`) | 127 s en vez de 238 s, y **las mismas 130 filas** (estado, tienda, tipo, tamaño y avisos); ninguna advertencia de tienda |
 
 ### 5. Revisión independiente de la entrega final (124 fotos)
 

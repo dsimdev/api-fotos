@@ -113,7 +113,14 @@ no respondió: **volver a correr la misma planilla**, solo se piden esas), `DATO
 SKU que no sirve de nombre de archivo, SKU repetido con otro EAN).
 
 Opciones por consola: `--refresh` (vuelve a consultar las tiendas por los EAN de esa planilla), `--cache <carpeta>`,
-`--salida <carpeta>` (dónde crear `Fotos <fecha>`, en vez de la carpeta del programa), `--no-abrir`. La caché está en `%LOCALAPPDATA%\api-fotos\cache` (o en `FOTOS_CACHE`) y **sobrevive entre planillas**:
+`--salida <carpeta>` (dónde crear `Fotos <fecha>`, en vez de la carpeta del programa), `--paralelo <1-8>` (cuántos
+productos se consultan a la vez; por defecto 3) y `--no-abrir`.
+
+**Cuánto tarda la primera vez** (sin caché): medido con la planilla de 130 productos, **127 s con 3 productos a la vez** y 238 s
+de a uno (la misma elección de foto en las 130 filas). Eso es ~1 s por producto: **1000 productos, unos 16 minutos
+(extrapolado, no medido)**. Con la caché cargada, segundos. Si se corta a la mitad, lo ya resuelto queda guardado y al
+volver a arrastrar el mismo archivo retoma. Subir `--paralelo` acelera menos de lo que parece: cada tienda sigue con un
+mínimo de 250 ms entre consultas, y no se midió cómo responden con más ritmo; con el 3 no hubo ni una advertencia. La caché está en `%LOCALAPPDATA%\api-fotos\cache` (o en `FOTOS_CACHE`) y **sobrevive entre planillas**:
 el mismo producto en la lista de otro cliente no se vuelve a pedir.
 
 ### Cómo decide

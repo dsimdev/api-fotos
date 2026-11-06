@@ -8,6 +8,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning:
 
 ## [Unreleased]
 
+### Added
+- `--paralelo <1-8>` (default 3): several products are looked up at the same time. One at a time left the program waiting for
+  the slowest of the seven stores on every product. Measured on the real 130-product sheet: 127 s against 238 s, with the
+  same pick on all 130 rows, no store warning, and each store still paced at 250 ms between requests. Lines come back in the
+  order of the rows; an EAN repeated across rows is looked up once even when those rows run together (a future per EAN); the
+  progress line is printed by one thread at a time. Decoding and analysing photos is capped by a semaphore (cores, at most 6)
+  so memory stays modest however many downloads are in flight. `BatchRunParallelTest` (really concurrent, never more than
+  asked, order, single lookup, progress, a failing row, same result as one by one), repeated six times to rule out flakiness.
+
 ### Changed
 - The delivery folder is now `Fotos <date>` (e.g. `Fotos 2026-11-06`) created INSIDE the folder the program is installed
   in, no longer next to the dropped sheet: the sheet usually comes from Downloads and that is not where deliveries should

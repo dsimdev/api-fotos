@@ -22,7 +22,7 @@ supermercados argentinos (VTEX), consultados por código de barras.
 
 Cambiar una foto es reemplazar el archivo en `fotos\` (y volver a armar el zip). Si el reporte dice `ERROR`, volver a
 correr la misma planilla: lo ya bajado queda guardado y solo se piden esos. Por consola:
-`fotos-tool <planilla> [--refresh] [--cache <carpeta>] [--salida <carpeta>] [--no-abrir]`.
+`fotos-tool <planilla> [--refresh] [--cache <carpeta>] [--salida <carpeta>] [--paralelo <1-8>] [--no-abrir]`.
 
 ## Qué hay en el repositorio
 

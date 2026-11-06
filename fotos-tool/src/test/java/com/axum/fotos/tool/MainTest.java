@@ -110,6 +110,32 @@ class MainTest {
         assertTrue(out().contains("--salida"), out());
     }
 
+    @Test
+    void theParallelOptionMustBeANumberBetweenOneAndEight() throws IOException {
+        String file = sheet("SKU,EAN\n1,7791337010604\n").toString();
+
+        for (String bad : new String[]{"abc", "0", "9", "-2"}) {
+            captured.reset();
+            assertEquals(1, run(file, "--paralelo", bad), bad);
+            assertTrue(out().contains("--paralelo"), bad + ": " + out());
+        }
+        captured.reset();
+        assertEquals(1, run(file, "--paralelo"));
+        assertTrue(out().contains("--paralelo"), out());
+    }
+
+    @Test
+    void aRunWithSeveralProductsAtOnceGivesTheSameDelivery() throws IOException {
+        Path file = sheet("SKU,EAN\n640008,7791337010604\n640012,7791337010710\n77,7791337009608\n");
+
+        int code = runInstalledIn(dir.resolve("Fotos Tienda"), file.toString(), "--paralelo", "4", "--cache", dir.resolve("c").toString());
+
+        assertEquals(0, code, out());
+        assertTrue(out().contains("Productos que se consultan a la vez: 4"), out());
+        assertTrue(Files.isRegularFile(dir.resolve("Fotos Tienda").resolve("Fotos 2026-11-06").resolve("fotos").resolve("640008.jpg")));
+        assertTrue(Files.isRegularFile(dir.resolve("Fotos Tienda").resolve("Fotos 2026-11-06").resolve("fotos").resolve("77.jpg")));
+    }
+
     /** The sheet is dropped from Downloads; the deliveries must pile up in the tool's own folder, not there. */
     @Test
     void aWholeRunWritesFotosAndTheDateInsideTheProgramFolderNotNextToTheSheet() throws IOException {

@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,6 +77,8 @@ public final class PhotoFinder {
     private final LocalCache cache;
     private final Clock clock;
     private final ExecutorService pool;
+    /** How many photos are decoded and analysed at once: bounded by the cores, and capped so memory stays modest. */
+    private final Semaphore imageWork = new Semaphore(Math.min(6, Math.max(2, Runtime.getRuntime().availableProcessors())));
 
     public PhotoFinder(List<StoreCatalog> stores, ImageFetcher fetcher, LocalCache cache, Clock clock, ExecutorService pool) {
         this.stores = List.copyOf(stores);
@@ -168,6 +171,17 @@ public final class PhotoFinder {
             return StoreResult.sellsWithout(id, "la imagen está en WebP, que no se puede leer", false);
         }
 
+        // Downloads wait on the network and can be many at once; decoding and analysing a 2000 px photo takes CPU and
+        // tens of MB, so only a few of those run at the same time however many products are in flight.
+        imageWork.acquireUninterruptibly();
+        try {
+            return analyze(id, product, downloaded);
+        } finally {
+            imageWork.release();
+        }
+    }
+
+    private StoreResult analyze(String id, StoreProduct product, Downloaded downloaded) {
         BufferedImage image;
         try {
             image = ImageCodec.decode(downloaded.bytes());
