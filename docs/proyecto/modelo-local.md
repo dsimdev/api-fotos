@@ -148,5 +148,7 @@ respondido: entonces no se guarda y la próxima corrida lo reintenta); "no lo ve
   coincide con el envase (otro peso, otra variante) no se detecta.
 - **Términos de uso de las APIs de VTEX y derechos de las imágenes:** sin consultar. Los derechos los asume el
   usuario (decidido el 2026-11-06).
-- `fotos-app` (servicio, panel, consulta de demostración) sigue en el repositorio, intacto y en suspenso; su destino
-  se decide cuando la herramienta se use un tiempo.
+- `fotos-app` (servicio, panel, consulta de demostración) **queda frenado pero no se saca** (decidido el 2026-11-06):
+  se conserva intacto en el repositorio por si más adelante hay que escalar a un servicio. No se construye nada nuevo
+  encima de él mientras tanto. Mantiene sus 24 tests y compila con el resto (`./gradlew build`), así que no se pudre
+  sin que se note; el conector de las tiendas que comparte con la herramienta ya vive en `fotos-stores`.

@@ -17,9 +17,10 @@ o cambia cada imagen en el sistema de la tienda. Es una API con un panel de admi
 
 **Etapa actual (2026-11-06): la herramienta local anda de punta a punta** (rama `feat/skeleton`, módulo
 `fotos-tool`; cuatro módulos Gradle: `fotos-core` sin framework, `fotos-stores` con el conector de las tiendas,
-`fotos-tool` con la línea de comandos y `fotos-app` con el servicio y el panel del modelo alojado, intacto). Falta
-publicarla (versión, changelog, merge a `main` con la confirmación del usuario) y decidir qué se hace con
-`fotos-app`. Las mediciones están en `docs/proyecto/mediciones.md`; lo investigado y la prueba con 10 productos
+`fotos-tool` con la línea de comandos y `fotos-app` con el servicio y el panel del modelo alojado). **`fotos-app`
+queda frenado pero NO se saca** (decidido el 2026-11-06): se conserva por si hay que escalar a un servicio, sin
+construir nada nuevo encima. Falta publicar la herramienta (versión, changelog, merge a `main` con la confirmación
+del usuario). Las mediciones están en `docs/proyecto/mediciones.md`; lo investigado y la prueba con 10 productos
 de dyssa, en `docs/proyecto/origen/`.
 
 > **Núcleo portable — no tocar sin motivo real:** secciones 1, 2, 3, 4, 8, 10, 11, 12.
