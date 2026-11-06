@@ -4,7 +4,7 @@ Herramienta local que convierte la planilla de un cliente (columnas **SKU** y **
 por producto, nombrada con el SKU**, lista para que la tienda la suba. Las fotos salen de los catálogos públicos de
 supermercados argentinos (VTEX), consultados por código de barras.
 
-**Versión actual:** 0.3.0
+**Versión actual:** 0.4.0
 
 ## Cómo se usa
 
@@ -26,13 +26,19 @@ cada una queda explicada en `reporte.csv`, que es donde se arreglan en el sistem
 
 Cambiar una foto es reemplazar el archivo en `fotos\` (y volver a armar el zip). Si el reporte dice `ERROR`, volver a
 correr la misma planilla: lo ya bajado queda guardado y solo se piden esos. Por consola:
-`fotos-tool <planilla> [--refresh] [--cache <carpeta>] [--salida <carpeta>] [--paralelo <1-8>] [--no-abrir]`.
+`fotos-tool <planilla> [--refresh] [--cache <carpeta>] [--salida <carpeta>] [--paralelo <1-8>] [--no-abrir]` y `fotos-tool --banco`.
+
+**El banco de fotos.** Cada foto que se baja queda guardada **por EAN** en `banco-fotos`, dentro de la carpeta del programa (el instalador
+no la toca), junto con la foto original sin recortar y de dónde salió: la próxima planilla que pida ese producto la saca de ahí sin
+consultar a nadie, y el SKU nunca se guarda en el banco. **Para sumar una foto propia**, dejá `<EAN>.jpg` o `<EAN>.png` en esa carpeta:
+se reconoce en la próxima corrida o con `fotos-tool --banco`, y `--refresh` no la reemplaza. `indice.csv` lista todo el banco; es lo
+único que se versiona en git (las fotos no).
 
 ## Qué hay en el repositorio
 
 | Módulo | Qué es |
 |---|---|
-| `fotos-core` | Núcleo sin framework: lector de planillas, recorte del panel de plantilla, elección de la foto, caché en carpeta, escritura de la entrega. |
+| `fotos-core` | Núcleo sin framework: lector de planillas, recorte del panel de plantilla, elección de la foto, banco de fotos en carpeta, escritura de la entrega. |
 | `fotos-stores` | Conector de las tiendas VTEX (ritmo, reintento, cortacircuito) y descarga segura de imágenes. |
 | `fotos-tool` | La herramienta de arrastrar y soltar. |
 | `fotos-app` | Servicio y panel de administración del modelo alojado. **Frenado, no se usa**; se conserva por si hay que escalar. |
@@ -47,7 +53,7 @@ correr la misma planilla: lo ya bajado queda guardado y solo se piden esos. Por 
 
 ## Documentación
 
-- `docs/proyecto/modelo-local.md`: cómo funciona, qué recuerda la caché y los **límites conocidos**.
+- `docs/proyecto/modelo-local.md`: cómo funciona, qué recuerda el banco de fotos y los **límites conocidos**.
 - `docs/proyecto/mediciones.md`: lo medido (cobertura de las tiendas, calidad de las fotos, revisiones independientes).
 - `CLAUDE.md`: reglas del proyecto (seguridad, datos, testing, flujo de trabajo).
 - `CHANGELOG.md`: cambios por versión.

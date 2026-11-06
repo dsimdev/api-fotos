@@ -120,7 +120,7 @@ donde se arregla. La revisión la hace un solo lugar (`RowChecker`) **antes** de
 conserva la primera fila. Con el export de Axum medido (1312 artículos): 1009 se consultan y 303 se ignoran (239 sin
 código de barras y 64 con EAN inválido), y la pantalla muestra solo las 1009.
 
-Opciones por consola: `--refresh` (vuelve a consultar las tiendas por los EAN de esa planilla), `--cache <carpeta>`,
+Opciones por consola: `--refresh` (vuelve a consultar las tiendas por los EAN de esa planilla sin perder la foto guardada), `--cache <carpeta>` (otro banco), `--banco` (sin planilla: reconoce las fotos propias y arma el índice),
 `--salida <carpeta>` (dónde crear `Fotos <fecha>`, en vez de la carpeta del programa), `--paralelo <1-8>` (cuántos
 productos se consultan a la vez; por defecto 3) y `--no-abrir`.
 
@@ -128,8 +128,7 @@ productos se consultan a la vez; por defecto 3) y `--no-abrir`.
 de a uno (la misma elección de foto en las 130 filas). Eso es ~1 s por producto: **1000 productos, unos 16 minutos
 (extrapolado, no medido)**. Con la caché cargada, segundos. Si se corta a la mitad, lo ya resuelto queda guardado y al
 volver a arrastrar el mismo archivo retoma. Subir `--paralelo` acelera menos de lo que parece: cada tienda sigue con un
-mínimo de 250 ms entre consultas, y no se midió cómo responden con más ritmo; con el 3 no hubo ni una advertencia. La caché está en `%LOCALAPPDATA%\api-fotos\cache` (o en `FOTOS_CACHE`) y **sobrevive entre planillas**:
-el mismo producto en la lista de otro cliente no se vuelve a pedir.
+mínimo de 250 ms entre consultas, y no se midió cómo responden con más ritmo; con el 3 no hubo ni una advertencia. El banco de fotos (abajo) **sobrevive entre planillas**: el mismo producto en la lista de otro cliente no se vuelve a pedir.
 
 ### Cómo decide
 
@@ -149,9 +148,43 @@ candidata y nunca se entrega "la más parecida". Entre los candidatos, **por cap
 Las dos primeras capas **no descartan**: solo pasan al candidato al fondo. Un cartón de base plana pegado al marco y
 uno rebanado se miden igual, así que si no hay otra foto, se entrega con un aviso en el reporte y no se esconde.
 
-**Qué recuerda la caché:** una foto encontrada, para siempre (salvo que sea dudosa y alguna tienda no haya
-respondido: entonces no se guarda y la próxima corrida lo reintenta); "no lo vende nadie" o "sin foto utilizable",
-**solo si todas las tiendas respondieron**. Un error nunca es una respuesta.
+### El banco de fotos (2026-11-06)
+
+La caché es **el banco de fotos**, para uso interno: las fotos las usa la tienda y no se le entregan los archivos a nadie
+más. Vive en `C:\Dev\app-fotos\banco-fotos` (dentro de la carpeta del programa, que el instalador nunca toca; `--cache` o
+`FOTOS_CACHE` lo cambian de lugar), **una carpeta por EAN**. El banco no guarda SKU: el SKU es de cada cliente, el EAN es
+de todos, y a la tienda solo se le pasan archivos con el código SKU.
+
+```
+banco-fotos/
+  7791337010604/
+    image.jpg         la foto que se entrega (sin el panel de la plantilla, si lo tenía)
+    original.jpg      la foto del comercio tal cual se bajó, SIN recortar (solo si hubo recorte)
+    previa.jpg        la foto a la que reemplazó la última vez que se cambió
+    entry.properties  de dónde salió: tienda, URL de la página y de la imagen, fecha, tipo, tamaño
+  indice.csv          una línea por EAN, en orden; se regenera en cada corrida
+  README.md  .gitignore
+```
+
+- **Qué recuerda:** una foto encontrada, para siempre (salvo que sea dudosa y alguna tienda no haya respondido: entonces
+  no se guarda y la próxima corrida lo reintenta); "no lo vende nadie" o "sin foto utilizable", **solo si todas las tiendas
+  respondieron**. Un error nunca es una respuesta.
+- **`--refresh` no pierde nada.** Antes borraba la foto guardada y recién después consultaba: si la tienda fallaba o ya no la
+  vendía, la foto se perdía. Ahora una foto guardada solo se reemplaza si se encuentra otra (la vieja queda como `previa`), y
+  se conserva cuando las tiendas fallan, ya no la venden o solo tienen imágenes inutilizables; el reporte lo dice.
+- **El original sirve para volver a recortar** si mejora el recortador. Las 154 fotos recortadas que ya estaban en el banco
+  recibieron su original el 2026-11-06 con un `--refresh` sobre una lista temporal de sus EAN: las 196 quedaron idénticas y
+  ninguna se reemplazó. Una foto limpia no tiene `original.*` aparte porque ella misma lo es.
+- **Una foto propia se reconoce sola.** Si dejás `<EAN>.jpg` o `<EAN>.png` en la carpeta del banco (el nombre es solo el EAN),
+  la próxima corrida, o `fotos-tool --banco` sin planilla, la guarda como la foto de ese EAN (la que había queda como
+  `previa`) y la saca de ahí. Es la forma de cubrir los EAN que ninguna tienda tiene y el día que VTEX ya no esté. Se trata como
+  cualquier entrada de afuera: el nombre tiene que ser un EAN válido, el tipo sale de los primeros bytes y no de la extensión,
+  un archivo que no se puede leer se deja donde está y se avisa (WebP no se puede leer: se pide JPG o PNG). `--refresh` nunca
+  reemplaza una foto propia y no se consulta ninguna tienda por ella; el reporte dice `propia` y solo avisa si es chica.
+- **`indice.csv`** (EAN, estado, origen, tienda, tipo, formato, lado, si tiene original, fecha, página, imagen, detalle) es lo
+  único que va a git: el `.gitignore` del banco deja afuera las fotos, que son de los comercios y las marcas.
+- **Qué NO es:** no guarda las fotos de las tiendas que no se eligieron (solo la elegida y su original), y no reemplaza a la
+  fuente: un EAN nuevo sigue necesitando una tienda o una foto propia.
 
 ### Límites conocidos (decirlos, no taparlos)
 
@@ -163,9 +196,9 @@ respondido: entonces no se guarda y la próxima corrida lo reintenta); "no lo ve
   verificación. En 22 de 124 productos las tiendas discrepan (otra edición, un pack viejo, otro ángulo) y manda la
   mayoría. No hay aviso en el reporte cuando hubo discrepancia: es una mejora posible.
 - **Los umbrales de borde (0,25) y de borrosa (15) salen de un solo catálogo** y de 124 fotos. Solo reordenan.
-- **La caché guarda la foto elegida, no todos los candidatos.** Si las reglas de elección cambian, las entradas viejas
-  siguen (no vencen): hay que correr con `--refresh`. Guardar todos los candidatos permitiría volver a elegir sin
-  volver a consultar; no se hizo todavía.
+- **El banco guarda la foto elegida (y su original), no todos los candidatos.** Si las reglas de elección cambian, las
+  entradas viejas siguen (no vencen): hay que correr con `--refresh`, que ya no pierde nada. Guardar todos los candidatos
+  permitiría volver a elegir sin volver a consultar; no se hizo todavía.
 - La descripción de la planilla no se usa para decidir (la coincidencia es por EAN exacto): una descripción que no
   coincide con el envase (otro peso, otra variante) no se detecta.
 - **Términos de uso de las APIs de VTEX y derechos de las imágenes:** sin consultar. Los derechos los asume el

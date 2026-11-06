@@ -6,6 +6,40 @@ and whoever runs the next 360 audit. Write **why**, not just what.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning:
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-11-06
+
+The cache becomes the photo bank: the photos are kept, by EAN, in a form that outlives VTEX and that a server can later
+serve as plain files. The photos are for internal use (the store has them, nobody else is given the files).
+
+### Added
+- **The bank keeps what is needed to redo a photo.** Besides `image.*` (the photo that is delivered) a folder by EAN now holds
+  `original.*` (the store's file as downloaded, BEFORE the crop, only when there was a crop, so a better cropper can redo it)
+  and `previa.*` (the photo a replacement displaced). `entry.properties` says whether a store or a person provided the photo.
+  Entries written by earlier versions still read fine (they count as from a store, without an original): the 111 cropped
+  entries of the first catalog get their original the next time they are refreshed.
+- **A photo a person drops in the bank is recognised.** A file `<EAN>.jpg` or `<EAN>.png` in the root of `banco-fotos` becomes the
+  photo of that EAN at the start of every run, or with `fotos-tool --banco` (no sheet needed), and is taken out of the root.
+  It is treated as outside input: the NAME must be a valid EAN and only that value ever builds a path, the type comes from the
+  first bytes and not the extension, a declared canvas over 40 megapixels is refused before decoding, a file that cannot be
+  read is left where it is and reported (nothing is deleted unless it was saved first), and WebP is refused with what to do.
+  A photo put in by hand is never replaced by `--refresh` and no store is asked about it; the report says `propia`. Locked in by
+  `BankIngestTest` (14), `PhotoFinderTest.aPhotoAPersonPutInIsUsedAsItIsAndNeverRefreshedNorAskedAboutAtAll` and `MainTest`.
+- **`indice.csv`** in the root of the bank, one line per EAN in EAN order (state, origin, store, kind, size, whether it has an
+  original, date, product page and image URL), rewritten after every run and byte-for-byte the same for the same bank, so it
+  can be versioned. The bank has no SKU: it is the client's, not the bank's. A `README.md` and a `.gitignore` that versions only
+  the index (the photos belong to the stores and brands) are created if missing and never overwritten.
+
+### Changed
+- **`--refresh` no longer deletes the stored photo before asking the stores.** It used to `remove` the entry first, so a refresh
+  while a store was down, or after it stopped selling the product, lost the photo for good, which is exactly what a bank meant
+  to outlive the stores cannot afford. Now a stored photo is replaced only when a new one is found (and the old one is kept as
+  `previa`), and kept when every store fails, none sells it any more or only unusable images are left; the report says so.
+  `PhotoFinderTest` (the four refresh cases, plus replace and keep-previous).
+- The bank lives in `banco-fotos` INSIDE the program folder (`C:\Dev\app-fotos\banco-fotos`) instead of `%LOCALAPPDATA%`, and the
+  installer never touches it. `--cache` and `FOTOS_CACHE` still override it. The console says "Banco de fotos".
+- `LocalCache.saveEmpty` over a photo keeps the photo as `previa` instead of deleting it. The CSV cell writer (formula
+  neutralising) is one class, `CsvCell`, shared by the report and the index.
+
 ## [0.3.0] - 2026-11-06
 
 Everything since 0.2.0, driven by the first real use: where the deliveries go, the real Axum article export, a faster run,

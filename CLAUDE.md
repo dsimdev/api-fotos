@@ -125,9 +125,13 @@ Propias del dominio. Lo que dice "servicio" o "API" es del modelo alojado, en su
   (borde, borrosa, baja resolución). La página del comercio y la URL de la imagen quedan en la caché
   (`entry.properties`), **no** en el reporte, y el reporte **no dice por qué se eligió** esa foto entre las
   candidatas: es una mejora posible.
-- **Siempre se contesta desde NUESTRA caché; las tiendas solo se consultan si el EAN no está.** La caché son archivos
-  (una carpeta por EAN), compartida entre clientes (las imágenes son del producto, no del cliente), con la imagen
-  guardada: no se enlaza la URL del comercio, esas URLs mueren. Las entradas **nunca vencen**; "no lo vende nadie" y
+- **Siempre se contesta desde NUESTRO banco de fotos; las tiendas solo se consultan si el EAN no está.** El banco son
+  archivos (`banco-fotos`, una carpeta por EAN, **sin SKU**: el SKU es del cliente), compartido entre clientes (las
+  imágenes son del producto, no del cliente), con la imagen guardada y también su **original sin recortar** (para rehacer
+  el recorte): no se enlaza la URL del comercio, esas URLs mueren. Es de uso interno: las fotos no se le entregan a nadie
+  más (decidido el 2026-11-06). **Una foto guardada nunca se pierde por consultar de nuevo**: `--refresh` solo la
+  reemplaza si encuentra otra (la vieja queda como `previa`), y una foto que una persona dejó en el banco (`<EAN>.jpg`)
+  no se reemplaza nunca. Las entradas **nunca vencen**; "no lo vende nadie" y
   "sin foto utilizable" solo se guardan si **todas** las tiendas respondieron (un error nunca es una respuesta) y solo
   se vuelve a consultar con `--refresh`. Decidido el 2026-11-06. El molde conceptual es el caché de
   `api-bonificaciones`; el diseño del servicio alojado, en suspenso, está en `docs/proyecto/cache.md`.
@@ -251,7 +255,7 @@ csv sin librerías, detector y recortador del panel con `java.awt`, elección de
 la entrega), `fotos-stores` (conector VTEX por EAN con ritmo, reintento y cortacircuito, y descarga segura de
 imágenes), `fotos-tool` (la línea de comandos: `Main`, `PhotoFinder`, `BatchRun`) y `fotos-app` (Spring Boot + panel
 Next.js embebido: el servicio del modelo alojado, **frenado, no se saca**). La herramienta corre con `java`, sin Spring
-ni base de datos: la caché son archivos (`%LOCALAPPDATA%\api-fotos\cache`, una carpeta por EAN) y se instala en
+ni base de datos: el banco de fotos son archivos (`C:\Dev\app-fotos\banco-fotos`, una carpeta por EAN, con `indice.csv`) y se instala en
 `C:\Dev\app-fotos` con `scripts/herramienta/instalar.ps1`.
 
 **Fuente**: los catálogos VTEX de siete tiendas (Jumbo, Carrefour, Masonline, Josimar, Cordiez, Disco y Vea),
@@ -275,13 +279,14 @@ servidor de la tienda); programa en `C:\Dev\app-fotos` y cada corrida crea ahí 
 planilla); el instalador no crea accesos directos (los hace el usuario); la entrega es `<SKU>.jpg` o `.png` según lo que
 la foto realmente es, sin convertir, más un zip, `reporte.csv` y `galeria.html`; las columnas de la planilla se buscan por
 nombre de encabezado (el export de artículos de Axum se arrastra tal cual: `codigo` es el SKU y `codbarra` el EAN); la
-caché nunca vence; lo que está mal se ignora; los derechos de las imágenes los asume el usuario; `fotos-app` queda
+el banco de fotos nunca vence y guarda también el original sin recortar; las fotos propias dejadas en su carpeta se reconocen; lo que está mal se ignora; los derechos de las imágenes los asume el usuario; `fotos-app` queda
 frenado y se conserva.
 
 **Abiertas / pendientes**: los **términos de uso de las APIs de VTEX** (sin consultar); **detección automática de marcas
 ajenas** (hoy se revisa a ojo en la galería); un aviso en el reporte cuando las tiendas discrepan entre sí (hoy manda la
-mayoría, sin avisar); **guardar todos los candidatos en la caché** (hoy solo la elegida, así que cambiar las reglas de
-elección exige `--refresh`); fuentes para los EAN que ninguna tienda tiene (marca propia de las cadenas: 4 de 130); los
+mayoría, sin avisar); **guardar todos los candidatos en el banco** (hoy solo la elegida y su original, así que cambiar las reglas de
+elección exige `--refresh`, que ya no pierde fotos); un **servidor para que todo Axum consuma el banco** (hoy no hay; es el paso
+en que "las fotos no se las doy a nadie" podría dejar de ser cierto y habría que decidirlo); fuentes para los EAN que ninguna tienda tiene (marca propia de las cadenas: 4 de 130); los
 umbrales de borde y nitidez salen de un solo catálogo; no se midió cómo responden las tiendas con más de 3 productos a la
 vez; y traer los artículos directo de la API de Axum en vez de exportarlos (el gateway documentado en agosto no traía
 código de barras; sin reverificar).
