@@ -46,8 +46,10 @@ public final class BatchRun {
                                         boolean[] fromCache) {
         Optional<Ean> parsed = Ean.tryParse(row.ean());
         if (parsed.isEmpty()) {
-            return DeliveryLine.without(row.row(), row.sku(), row.ean(), row.description(), Result.DATOS_INVALIDOS,
-                    "EAN inválido: revisar el largo, que sean solo dígitos y el dígito verificador.");
+            String why = row.ean().isBlank()
+                    ? "No tiene código de barras (EAN) en la planilla: hay que cargarlo en el sistema de origen."
+                    : "EAN inválido: revisar el largo, que sean solo dígitos y el dígito verificador.";
+            return DeliveryLine.without(row.row(), row.sku(), row.ean(), row.description(), Result.DATOS_INVALIDOS, why);
         }
         if (row.sku().isBlank()) {
             return DeliveryLine.without(row.row(), row.sku(), parsed.get().value(), row.description(), Result.DATOS_INVALIDOS,

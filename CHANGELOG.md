@@ -18,6 +18,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning:
 - `scripts/herramienta/instalar.ps1` installs to `C:\Dev\Fotos Tienda` and no longer creates a desktop shortcut (each person
   makes theirs). Because deliveries now live in the install folder, an update replaces only `bin`, `lib` and the launcher
   and never wipes the folder; it still refuses a non-empty folder that is not a previous install.
+- A row with no barcode now says "No tiene código de barras (EAN) en la planilla" instead of "EAN inválido": in an export of
+  a client whose articles have no barcode loaded, that is the common case and "invalid" sent people looking for a typo.
+  `BatchRunTest.aRowWithoutAnEanSaysItIsMissingInsteadOfInvalid`.
+
+### Fixed
+- Axum's article export was rejected ("no encontré las columnas SKU y EAN"): it names the barcode column `codbarra`, singular,
+  and only `codbarras` was recognised. The singular forms were added; `codigo` was already the SKU.
+  `SpreadsheetReaderTest.readsTheArticleExportOfAxumWhereCodigoIsTheSkuAndCodbarraTheEan` and
+  `theAxumHeadersAreRecognisedInUpperCaseAndInACsvToo`.
 
 ## [0.2.0] - 2026-11-06
 

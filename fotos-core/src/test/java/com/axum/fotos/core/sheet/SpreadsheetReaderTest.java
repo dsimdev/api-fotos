@@ -79,6 +79,30 @@ class SpreadsheetReaderTest {
         assertEquals(List.of(new ProductRow(2, "Yogur", "A-1", "7791337010604")), rows);
     }
 
+    /** The article export of Axum: "codigo" is the SKU and "codbarra" the EAN, with other columns around them. */
+    @Test
+    void readsTheArticleExportOfAxumWhereCodigoIsTheSkuAndCodbarraTheEan() throws IOException {
+        var file = xlsx(sst("codigo", "descripcion", "linea", "codbarra", "rubro", "1000", "POLVO DESODORANTE X 180 G", "DESODORANTES", "DESODORANTE EN POLVO"),
+                "<row r=\"1\"><c r=\"A1\" t=\"s\"><v>0</v></c><c r=\"B1\" t=\"s\"><v>1</v></c><c r=\"C1\" t=\"s\"><v>2</v></c>"
+                        + "<c r=\"D1\" t=\"s\"><v>3</v></c><c r=\"E1\" t=\"s\"><v>4</v></c></row>"
+                        + "<row r=\"2\"><c r=\"A2\" t=\"s\"><v>5</v></c><c r=\"B2\" t=\"s\"><v>6</v></c><c r=\"C2\" t=\"s\"><v>7</v></c>"
+                        + "<c r=\"D2\"><v>7791337010604</v></c><c r=\"E2\" t=\"s\"><v>8</v></c></row>");
+
+        var rows = SpreadsheetReader.read(file);
+
+        assertEquals(List.of(new ProductRow(2, "POLVO DESODORANTE X 180 G", "1000", "7791337010604")), rows);
+    }
+
+    @Test
+    void theAxumHeadersAreRecognisedInUpperCaseAndInACsvToo() throws IOException {
+        var file = dir.resolve("articulos.csv");
+        Files.writeString(file, "CODIGO;DESCRIPCION;CODBARRA\r\n1000;Polvo;7791337010604\r\n1001;Sin codigo de barras;\r\n", StandardCharsets.UTF_8);
+
+        var rows = SpreadsheetReader.read(file);
+
+        assertEquals(List.of(new ProductRow(2, "Polvo", "1000", "7791337010604"), new ProductRow(3, "Sin codigo de barras", "1001", "")), rows);
+    }
+
     @Test
     void aMissingColumnIsReportedByNameTogetherWithWhatWasFound() throws IOException {
         var file = xlsx(sst("Descripción", "Precio", "EAN"),

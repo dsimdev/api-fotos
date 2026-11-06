@@ -86,6 +86,17 @@ class BatchRunTest {
         assertEquals(1, storeCalls.get(), "only the valid row reached a store");
     }
 
+    /** An export of a client whose articles have no barcode loaded in the source system: the row says so, not "invalid". */
+    @Test
+    void aRowWithoutAnEanSaysItIsMissingInsteadOfInvalid() {
+        var lines = BatchRun.run(List.of(row(2, "1000", ""), row(3, "1001", "123")), finder(false), false, (d, t, l, c) -> { });
+
+        assertEquals(Result.DATOS_INVALIDOS, lines.get(0).result());
+        assertTrue(lines.get(0).detail().contains("No tiene código de barras"), lines.get(0).detail());
+        assertTrue(lines.get(1).detail().contains("EAN inválido"), "a present but wrong EAN keeps the old message: " + lines.get(1).detail());
+        assertEquals(0, storeCalls.get(), "neither reached a store");
+    }
+
     @Test
     void theSameEanUnderTwoSkusIsLookedUpOnceAndBothGetThePhoto() {
         var lines = BatchRun.run(List.of(row(2, "1", EAN_A), row(3, "2", EAN_A)), finder(false), false, (d, t, l, c) -> { });

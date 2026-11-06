@@ -57,7 +57,11 @@ mismo para las dos, así que A no se tira cuando llegue B.
    pantalla o un servicio), con la caché, las tiendas y las carpetas configurables.
 4. **La planilla:** no se sabe qué traen los clientes, así que **se les va a pedir un formato fijo** (descripción,
    SKU y EAN). La herramienta busca las columnas por el nombre del encabezado (sin distinguir mayúsculas ni tildes)
-   y no por la posición, y si falta una avisa cuál.
+   y no por la posición, y si falta una avisa cuál. **El export de artículos de Axum se arrastra tal cual**: `codigo`
+   es el SKU y `codbarra` el EAN. Nombres que reconoce, entre otros: SKU = `sku`, `codigo`, `cod`, `codigo articulo`;
+   EAN = `ean`, `codbarra`, `codbarras`, `codigo de barras`, `gtin`, `barcode`; descripción (opcional) = `descripcion`,
+   `nombre`, `producto`. Un artículo sin código de barras en el export sale en el reporte como "No tiene código de
+   barras (EAN) en la planilla", no como EAN inválido.
 5. **Derechos:** los asume el usuario. A cambio, **las fotos no pueden tener marcas ajenas al producto** (logos o marcas
    de agua de comercios, sellos de oferta, paneles, textos agregados). Es un criterio de calidad de la herramienta y
    se revisa a ojo antes de entregar (revisión de las 122 fotos del catálogo de la tienda: `mediciones.md`, fase A4).

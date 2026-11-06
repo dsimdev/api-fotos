@@ -23,7 +23,9 @@ public final class SpreadsheetReader {
     private static final int HEADER_SEARCH_ROWS = 10;
 
     private static final Set<String> EAN_NAMES = Set.of("ean", "ean13", "ean 13", "gtin", "upc", "barcode",
-            "codigo de barras", "codigo barras", "cod barras", "cod de barras", "codbarras");
+            "codigo de barras", "codigo barras", "cod barras", "cod de barras", "codbarras",
+            // Axum's article export names it "codbarra", singular, next to "codigo" for the SKU.
+            "codbarra", "cod barra", "cod de barra", "codigo barra", "codigo de barra");
     private static final Set<String> SKU_NAMES = Set.of("sku", "codigo sku", "cod sku", "codigo articulo",
             "codigo de articulo", "cod articulo", "cod de articulo", "codigo interno", "codigo", "cod");
     private static final Set<String> DESCRIPTION_NAMES = Set.of("descripcion", "descripcion articulo",
