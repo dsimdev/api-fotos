@@ -44,15 +44,41 @@ Es decir: **una herramienta que corre en la máquina del usuario, por lotes y a 
 **Recomendación: A primero, B si se usa seguido.** El núcleo (buscar, recortar, elegir, escribir la entrega) es el
 mismo para las dos, así que A no se tira cuando llegue B.
 
-## 5. Preguntas abiertas
+## 5. Respuestas del usuario (2026-11-06)
 
-1. **¿Qué formato y tamaño necesita la tienda para subir las fotos?** (JPG o PNG, lado en píxeles, peso máximo,
-   fondo blanco). Hoy se entregan JPEG cuadrados de entre 667 y 2300 px con fondo blanco, sin normalizar.
-2. **¿Cómo se revisa y se cambia una foto?** Opción A: reemplazando el archivo de la carpeta. Opción B: en la pantalla.
-3. **¿Lo corre solo el usuario o también otras personas?** Cambia lo que hay que instalar (Java) y cómo se entrega.
-4. **La persistencia local:** una carpeta de caché con archivos y un índice (la propuesta) en lugar de SQL Server. Con
-   130 productos, o unos miles, no hace falta una base.
-5. **¿Una planilla trae siempre las mismas columnas** (descripción, SKU, EAN)? Si cambia el orden o el nombre, hay que
-   saber cómo reconocer cuál es cuál.
-6. **Derechos de las imágenes:** ahora el usuario las descarga y las entrega, así que la pregunta de quién asume el
-   riesgo de publicarlas sigue en pie, y es de él.
+1. **Formato:** JPG o PNG, el que tenga la foto. El archivo se llama `<SKU>.jpg` o `<SKU>.png` según lo que sea de
+   verdad (no se convierte). Una imagen WebP (solo la sirve Josimar) no se entrega tal cual: se elige otra, y si no
+   hay otra se convierte o se reporta. De tamaño no hay un pedido: hoy se entrega la original o la recortada, sin
+   normalizar (entre 667 y 2300 px, fondo blanco).
+2. **Cómo se revisa y se cambia una foto:** depende de cómo se opere (sección 6), que sigue abierta.
+3. **Quién lo corre:** solo el usuario, en esta PC, por ahora. Se diseña para poder crecer: el núcleo (leer la
+   planilla, buscar, recortar, elegir, escribir la entrega) separado de la forma de usarlo (un acceso directo, una
+   pantalla o un servicio), con la caché, las tiendas y las carpetas configurables.
+4. **La planilla:** no se sabe qué traen los clientes, así que **se les va a pedir un formato fijo** (descripción,
+   SKU y EAN). La herramienta busca las columnas por el nombre del encabezado (sin distinguir mayúsculas ni tildes)
+   y no por la posición, y si falta una avisa cuál.
+5. **Derechos:** los asume el usuario. A cambio, **las fotos no pueden tener marcas ajenas al producto** (logos o marcas
+   de agua de comercios, sellos de oferta, paneles, textos agregados). Es un criterio de calidad de la herramienta y
+   se revisa a ojo antes de entregar (revisión de las 122 fotos del catálogo de la tienda: `mediciones.md`, fase A4).
+6. **Persistencia local:** una carpeta de caché con archivos y un índice, no SQL Server. Con 130 productos, o unos
+   miles, no hace falta una base.
+
+## 6. Cómo se opera (decidido el 2026-11-06: A1, arrastrar y soltar)
+
+El usuario pidió algo **fácil** y confirmó la opción A1 ("Sí, vamos con arrastrar y soltar"). Las formas posibles
+que se evaluaron, de menos a más trabajo:
+
+- **A1. Arrastrar y soltar.** Un acceso directo en el escritorio: se arrastra la planilla encima, la herramienta
+  trabaja y al terminar abre la carpeta con las fotos y la galería. Sin escribir comandos. Necesita Java, que ya está.
+- **A2. Un comando en la terminal.** Lo mismo, tipeando. Más simple de construir, menos cómodo.
+- **B. Pantalla en el navegador, en tu máquina.** Se abre con un doble clic; se carga la planilla, se ven las fotos,
+  se cambia una por otra alternativa y se descarga el ZIP. Es la más cómoda de usar y la que más trabajo lleva.
+- **C. Programa de escritorio con ventana propia e instalador.** Más trabajo que B sin ganar nada sobre ella.
+
+**Decidido: A1 primero.** Además de las fotos, deja un **ZIP listo para pasarle a la tienda** (el pedido es "le paso
+la descarga"), el `reporte.csv` y la galería. Cambiar una foto es reemplazar el archivo en la carpeta. Si se usa
+seguido y eso molesta, se construye B encima del mismo núcleo.
+
+Lo que **todavía no se decidió** y se resuelve al construir: qué pasa con el código del modo servicio que ya existe
+(la consulta de demostración y el panel de `fotos-app`): se conserva intacto mientras no estorbe, y se decide su
+destino cuando la herramienta ande.
