@@ -1,9 +1,10 @@
-# Modelo local — BORRADOR
+# Modelo local
 
-> **Estado: borrador del 2026-11-06.** El usuario propuso este cambio de rumbo y todavía no está decidido en
-> detalle. Hasta que lo esté, **no se construye nada que dependa de hospedar un servicio** (API con clave por
-> cliente, SQL Server, login del panel, deploy). Lo medido (`mediciones.md`) y las reglas de la elección de la
-> imagen siguen valiendo.
+> **Estado (2026-11-06): decidido y construido.** El usuario propuso este cambio de rumbo y confirmó la forma de
+> operarlo (arrastrar y soltar, sección 6). **La sección 7 describe lo que ya anda y sus límites**; las secciones 1 a
+> 6 son el análisis que llevó a la decisión y se conservan como registro. **No se construye nada que dependa de
+> hospedar un servicio** (API con clave por cliente, SQL Server, login del panel, deploy) salvo pedido nuevo. Lo medido
+> (`mediciones.md`) y las reglas de la elección de la imagen siguen valiendo.
 
 ## 1. Qué se propuso
 
@@ -82,3 +83,70 @@ seguido y eso molesta, se construye B encima del mismo núcleo.
 Lo que **todavía no se decidió** y se resuelve al construir: qué pasa con el código del modo servicio que ya existe
 (la consulta de demostración y el panel de `fotos-app`): se conserva intacto mientras no estorbe, y se decide su
 destino cuando la herramienta ande.
+
+## 7. Qué se construyó (2026-11-06)
+
+### Cómo se usa
+
+1. Una vez: `scripts/herramienta/instalar.ps1` (compila, copia el programa a `%LOCALAPPDATA%\api-fotos\herramienta` y
+   crea el acceso directo **Fotos por SKU** en el escritorio). Se puede correr de nuevo para actualizar.
+2. Cada vez que un cliente manda su lista: **arrastrar la planilla (.xlsx o .csv, con columnas SKU y EAN) sobre el
+   acceso directo.** Se abre una ventana con el avance fila por fila.
+3. Al terminar se abre la carpeta `<planilla> - fotos`, junto a la planilla:
+   - `fotos\` una foto por SKU, `<SKU>.jpg` o `<SKU>.png` según lo que la foto realmente es (no se convierte);
+   - `fotos.zip` las mismas fotos, listas para pasarle a la tienda;
+   - `reporte.csv` una línea por fila de la planilla: estado, tienda de donde salió, tamaño y **avisos**;
+   - `galeria.html` lo mismo para mirar, con los avisos marcados.
+4. Cambiar una foto es **reemplazar el archivo** en `fotos\` (y volver a armar el zip). Correr de nuevo la misma
+   planilla no pisa nada: arma `... - fotos (2)`.
+
+Estados del reporte: `OK` (original de la tienda, sin tocar), `OK_RECORTADA` (se le quitó el panel de plantilla),
+`SIN_IMAGEN` (ninguna tienda lo vende, o ninguna tiene una foto utilizable: el detalle lo dice), `ERROR` (una tienda
+no respondió: **volver a correr la misma planilla**, solo se piden esas), `DATOS_INVALIDOS` (EAN mal, SKU faltante,
+SKU que no sirve de nombre de archivo, SKU repetido con otro EAN).
+
+Opciones por consola: `--refresh` (vuelve a consultar las tiendas por los EAN de esa planilla), `--cache <carpeta>`,
+`--no-abrir`. La caché está en `%LOCALAPPDATA%\api-fotos\cache` (o en `FOTOS_CACHE`) y **sobrevive entre planillas**:
+el mismo producto en la lista de otro cliente no se vuelve a pedir.
+
+### Cómo decide
+
+Por cada EAN, primero la caché; si no está, las **siete tiendas en paralelo** (cada una con su propio ritmo: 250 ms
+entre consultas, un reintento, cortacircuito, como en el servicio). De cada tienda se mira **solo la primera imagen**
+(las siguientes pueden ser el dorso). Cada imagen es candidata solo si sirve: limpia, o recortada sin su panel; si
+trae el panel y no se pudo recortar, si el fondo no es blanco o si es WebP (solo Josimar, que Java no lee), no es
+candidata y nunca se entrega "la más parecida". Entre los candidatos, **por capas**:
+
+1. no tocar el borde de la foto (un producto rebanado por la fuente es lo único que un recorte no arregla);
+2. no estar borrosa (una miniatura agrandada);
+3. **la mayoría**: si las tiendas muestran fotos distintas, la que más tiendas repiten (todas votan, solo puede ser
+   elegida la que pasó las dos capas anteriores; Jumbo, Disco y Vea sirven el mismo archivo y cuentan como un voto);
+4. al menos 500 px, luego el original de la tienda sobre el recortado, luego el más grande, luego el orden de
+   `stores.txt`.
+
+Las dos primeras capas **no descartan**: solo pasan al candidato al fondo. Un cartón de base plana pegado al marco y
+uno rebanado se miden igual, así que si no hay otra foto, se entrega con un aviso en el reporte y no se esconde.
+
+**Qué recuerda la caché:** una foto encontrada, para siempre (salvo que sea dudosa y alguna tienda no haya
+respondido: entonces no se guarda y la próxima corrida lo reintenta); "no lo vende nadie" o "sin foto utilizable",
+**solo si todas las tiendas respondieron**. Un error nunca es una respuesta.
+
+### Límites conocidos (decirlos, no taparlos)
+
+- **Marcas ajenas (logos de comercios, marcas de agua, sellos de oferta, textos agregados):** la herramienta **no las
+  detecta**. En el catálogo medido (130 productos) una revisión independiente de las 124 fotos no encontró ninguna,
+  porque la fuente son fotos de catálogo de cadenas con la plantilla del proveedor, pero con otro catálogo o
+  otras tiendas puede pasar. La galería es la herramienta para mirarlo antes de entregar.
+- **Qué diseño del envase es "el bueno":** la mayoría de las tiendas, que es lo más probable pero no una
+  verificación. En 22 de 124 productos las tiendas discrepan (otra edición, un pack viejo, otro ángulo) y manda la
+  mayoría. No hay aviso en el reporte cuando hubo discrepancia: es una mejora posible.
+- **Los umbrales de borde (0,25) y de borrosa (15) salen de un solo catálogo** y de 124 fotos. Solo reordenan.
+- **La caché guarda la foto elegida, no todos los candidatos.** Si las reglas de elección cambian, las entradas viejas
+  siguen (no vencen): hay que correr con `--refresh`. Guardar todos los candidatos permitiría volver a elegir sin
+  volver a consultar; no se hizo todavía.
+- La descripción de la planilla no se usa para decidir (la coincidencia es por EAN exacto): una descripción que no
+  coincide con el envase (otro peso, otra variante) no se detecta.
+- **Términos de uso de las APIs de VTEX y derechos de las imágenes:** sin consultar. Los derechos los asume el
+  usuario (decidido el 2026-11-06).
+- `fotos-app` (servicio, panel, consulta de demostración) sigue en el repositorio, intacto y en suspenso; su destino
+  se decide cuando la herramienta se use un tiempo.

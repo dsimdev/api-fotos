@@ -35,3 +35,7 @@ entrega-servidor/*.jar
 
 # The Slack webhook is a SECRET: never in the repo, even if someone copies it next to the package.
 entrega-servidor/*webhook*
+
+# Delivery folders the local tool writes next to a client sheet: client data and third-party images.
+*- fotos/
+*- fotos (*)/

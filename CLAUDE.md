@@ -5,19 +5,22 @@ demás candidatos. Primer cliente: la tienda `senderolaser`, que no tiene imáge
 lo consume el backend de la tienda, que recorre todos sus códigos, y una persona del cliente confirma
 o cambia cada imagen en el sistema de la tienda. Es una API con un panel de administración embebido.
 
-> **EN REVISIÓN (2026-11-06): el modelo cambia.** El usuario propuso que esto **no sea un servicio más
-> en el servidor de la tienda** sino una **herramienta local**, que corre en su máquina cuando un cliente
-> le pide fotos: el cliente pasa una planilla con EAN y SKU, la herramienta arma una carpeta con una foto
-> por producto **nombrada con el SKU**, y el usuario se la entrega a la tienda para que la suba. Lo medido
-> sigue valiendo. Lo que depende de hospedar un servicio (API con clave por cliente, SQL Server, login,
-> deploy, alertas, `LOADING`) queda **en suspenso hasta decidirlo**: no construirlo. Análisis y preguntas:
-> `docs/proyecto/modelo-local.md`. Lo que sigue de este archivo describe el modelo alojado.
+> **DECIDIDO (2026-11-06): esto es una herramienta local, no un servicio.** Corre en la máquina del usuario
+> cuando un cliente le pide fotos: el cliente pasa una planilla con SKU y EAN, el usuario la **arrastra sobre un
+> acceso directo**, y la herramienta arma una carpeta con una foto por producto **nombrada con el SKU**, un ZIP,
+> un reporte y una galería, que el usuario le entrega a la tienda para que la suba. Lo medido sigue valiendo.
+> Lo que depende de hospedar un servicio (API con clave por cliente, SQL Server, login, deploy, alertas,
+> `LOADING`) queda **en suspenso: no construirlo** salvo que el usuario vuelva a pedirlo. Qué se construyó, cómo
+> se usa y qué límites tiene: `docs/proyecto/modelo-local.md`. **Las secciones de abajo que hablan de la API, la
+> caché compartida o el servidor describen el modelo alojado y están en suspenso**; lo que sí rige para la
+> herramienta es la seguridad (sección 6), el EAN validado, los datos (sección 5, salvo lo de la API) y el testing.
 
-**Etapa actual (2026-11-06): primer corte en construcción.** Hay un esqueleto Java con el panel
-embebido y el conector de las tiendas VTEX (rama `feat/skeleton`); todavía no hay caché persistente,
-API con clave ni servidor. Ya se midió la fuente de las imágenes (`docs/proyecto/mediciones.md`).
-Lo investigado y la prueba con 10 productos de dyssa están en `docs/proyecto/origen/`. Lo que
-depende de decisiones pendientes dice "por definir" y se completa cuando se decida, no antes.
+**Etapa actual (2026-11-06): la herramienta local anda de punta a punta** (rama `feat/skeleton`, módulo
+`fotos-tool`; cuatro módulos Gradle: `fotos-core` sin framework, `fotos-stores` con el conector de las tiendas,
+`fotos-tool` con la línea de comandos y `fotos-app` con el servicio y el panel del modelo alojado, intacto). Falta
+publicarla (versión, changelog, merge a `main` con la confirmación del usuario) y decidir qué se hace con
+`fotos-app`. Las mediciones están en `docs/proyecto/mediciones.md`; lo investigado y la prueba con 10 productos
+de dyssa, en `docs/proyecto/origen/`.
 
 > **Núcleo portable — no tocar sin motivo real:** secciones 1, 2, 3, 4, 8, 10, 11, 12.
 > **Por proyecto:** secciones 5, 6, 7, 9, 13.
