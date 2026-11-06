@@ -1,14 +1,15 @@
 # api-fotos — Directivas para Claude Code
 
-Servicio que recibe un código de barras (EAN) y devuelve la foto del producto, 100% automático.
-Primer cliente: la tienda `senderolaser`, que no tiene imágenes de sus productos; lo consume el
-backend de la tienda. No tiene UI: es una API.
+Servicio que recibe un código de barras (EAN) y devuelve una imagen recomendada del producto, más los
+demás candidatos. Primer cliente: la tienda `senderolaser`, que no tiene imágenes de sus productos;
+lo consume el backend de la tienda, que recorre todos sus códigos, y una persona del cliente confirma
+o cambia cada imagen en el sistema de la tienda. Es una API con un panel de administración embebido.
 
-**Etapa actual (2026-11-05): medición de tecnologías.** Todavía no hay código ni servidor. Ya se
-midió la fuente de las imágenes (`docs/proyecto/mediciones.md`) y se eligió el stack (Java + panel
-Next embebido); falta definir la persistencia y el primer corte. Lo
-investigado y la prueba con 10 productos de dyssa están en `docs/proyecto/origen/`. Lo que depende
-de la tecnología dice "por definir" y se completa cuando se decida, no antes.
+**Etapa actual (2026-11-06): primer corte en construcción.** Hay un esqueleto Java con el panel
+embebido y el conector de las tiendas VTEX (rama `feat/skeleton`); todavía no hay caché persistente,
+API con clave ni servidor. Ya se midió la fuente de las imágenes (`docs/proyecto/mediciones.md`).
+Lo investigado y la prueba con 10 productos de dyssa están en `docs/proyecto/origen/`. Lo que
+depende de decisiones pendientes dice "por definir" y se completa cuando se decida, no antes.
 
 > **Núcleo portable — no tocar sin motivo real:** secciones 1, 2, 3, 4, 8, 10, 11, 12.
 > **Por proyecto:** secciones 5, 6, 7, 9, 13.
@@ -20,10 +21,10 @@ de la tecnología dice "por definir" y se completa cuando se decida, no antes.
 Antes de `git push origin main`, completar en este orden **sin excepción**:
 
 1. `./gradlew build` pasa sin errores (build + tests verdes; reconstruye también el panel si hay
-   `node_modules`). Todavía no existe el build: se arma en el primer corte
+   `node_modules`)
 2. **Bump versión** en `.claude/VERSION` (arranca en `0.1.0`) — semver: patch=fix/tweak,
-   minor=feature nueva, major=rediseño/breaking. Cuando exista el `build.gradle.kts` raíz, su
-   `version` se bumpea **junto** con `.claude/VERSION`, en el mismo commit
+   minor=feature nueva, major=rediseño/breaking. El `version` del `build.gradle.kts` raíz se
+   bumpea **junto** con `.claude/VERSION`, en el mismo commit (el build falla si difieren)
 3. **`CHANGELOG.md`** — entrada técnica en inglés con todos los cambios del release
 4. ~~`CHANGELOG_USER.md`~~ — **no se usa en este proyecto** (decisión 2026-11-05: un solo changelog,
    en inglés). Se conserva el número para no desalinear `docs/metodo/`
@@ -105,8 +106,12 @@ Propias del dominio (**provisorias**: se confirman al definir el contrato de la 
 - **Cada candidato lleva su traza**: tienda y página del comercio de donde salió, posición en la
   tienda, resolución y si se le quitó el banner; y la recomendada dice por qué se eligió. Sirve para
   auditar y para que quien la cambie decida con información. Es la idea de "traza" de MotorFiscal.
-- **Caché por EAN, con la imagen en almacenamiento propio.** No se enlaza la URL del comercio:
-  esas URLs mueren.
+- **Siempre se contesta desde NUESTRA caché; VTEX solo se consulta si el EAN no está** (o su entrada
+  venció, o se pidió refrescar). Decidido el 2026-11-06. La caché es por EAN, compartida entre
+  clientes (las imágenes son del producto, no del cliente), con la imagen en almacenamiento propio:
+  no se enlaza la URL del comercio, esas URLs mueren. **El molde es el caché de `api-bonificaciones`**
+  (una sola carga por clave, no hacer esperar un request por una descarga larga, servir lo viejo si
+  la fuente falla y avisar, medir desalojos). Diseño y preguntas abiertas: `docs/proyecto/cache.md`.
 - **Se devuelve un frente verificado, no cualquier imagen de la tienda.** Solo la posición 0 de
   cada tienda (las posteriores pueden ser del reverso del envase, como pasó con Hesperidina) y sin
   el panel de banner de la plantilla: se recorta si es un objeto separado del producto, y si no se
@@ -227,13 +232,15 @@ hay EAN que existen en una sola tienda: por eso las fuentes tienen que ser inter
 consultan varias tiendas por EAN.
 
 **Decididas (2026-11-05)**: servicio nuevo en repo propio; automático por defecto, con **una
-imagen recomendada y los demás candidatos para que la tienda pueda cambiarla**; **SQL Server +
+imagen recomendada y los demás candidatos para que la tienda pueda cambiarla** (la tienda recorre todos sus códigos y una persona del cliente
+confirma o cambia cada imagen, incluso por una propia, en el sistema de la tienda: entendido el
+2026-11-06, a confirmar); **siempre desde nuestra caché, VTEX solo si no está**; **SQL Server +
 Flyway**; **Java 21 + Spring Boot con un panel Next embebido**; **VTEX por EAN como
 fuente principal** (el usuario lo aceptó después de medirlo). **Descartado por medición**: el
 scraping propio de Google, que bloquea a un navegador automatizado en la primera request y no se
 esquiva (ver `docs/proyecto/mediciones.md`). SerpApi queda de plan B y Open Food Facts de respaldo.
-**Abiertas**: **quién cambia la imagen en la tienda** (una persona o el sistema; en el sistema de la
-tienda o en nuestro panel); dónde se guardan las imágenes en disco; si un candidato con banner que no
+**Abiertas**: **la política de la caché** (vencimientos, EAN sin imagen, cómo responde a una barrida
+de la tienda: `docs/proyecto/cache.md`); dónde se guardan las imágenes en disco; si un candidato con banner que no
 se pudo recortar se lista (marcado, nunca recomendado) o se descarta; qué se devuelve cuando ninguna
 tienda tiene una imagen sin banner (el recorte funcionó en los 12 casos revisados, pero falta un
 verificador); verificación con

@@ -7,13 +7,15 @@
 
 ## 1. El proceso (decidido el 2026-11-05)
 
-1. El backend de la tienda (por ahora `senderolaser`) pide la imagen de un EAN.
-2. El servicio consulta las tiendas VTEX (o su caché), baja las imágenes, quita el banner cuando se puede
-   y arma la lista de **candidatos**.
+1. El backend de la tienda (por ahora `senderolaser`) **recorre todos sus códigos** y pide la imagen de cada EAN
+   (en lotes).
+2. El servicio responde **desde su caché**. Solo si el EAN no está consulta las tiendas VTEX, baja las imágenes,
+   quita el banner cuando se puede y arma la lista de **candidatos** (ver `cache.md`).
 3. El servicio elige **una recomendada** y devuelve la recomendada **y** los demás candidatos, cada uno con
    su traza.
-4. La tienda **guarda los bytes** de la recomendada en su SQL. Si no le gusta, elige otro candidato y guarda
-   ese. No se guarda una URL: las de los comercios mueren.
+4. La tienda **guarda los bytes** de la recomendada en su SQL, no una URL (las de los comercios mueren). Una
+   persona del cliente **confirma** cada imagen en el sistema de la tienda; si alguna no le gusta, la cambia por
+   otro candidato **o por una propia**.
 5. Si ningún candidato es aceptable, el estado es explícito (sin imagen) y no hay recomendada. Nunca se
    devuelve una imagen de relleno.
 
@@ -63,8 +65,9 @@ ese tenant.
 }
 ```
 
-- **`status`**: `OK` (hay recomendada) o sin imagen. **Los nombres finales están por definir** (el brief usa
-  `OK`, `CON_MARCA`, `SIN_IMAGEN`).
+- **`status`**: `OK` (hay recomendada), sin imagen, o `LOADING` (el EAN se está cargando en segundo plano:
+  reintentar pasado el `Retry-After`; es el patrón `CATALOGO_CARGANDO` de `api-bonificaciones`). **Los nombres
+  finales están por definir** (el brief usa `OK`, `CON_MARCA`, `SIN_IMAGEN`).
 - **`stores` es una lista** porque varias tiendas sirven el mismo archivo (Jumbo, Disco y Vea tienen el mismo
   hash): se agrupan en un solo candidato en vez de repetirlo tres veces.
 - **`bannerStatus`**: `NONE` (la imagen original no tenía panel), `REMOVED` (se recortó) o `PRESENT` (tiene
@@ -114,11 +117,11 @@ alertas.
 
 ## 7. Preguntas abiertas
 
-1. **¿Quién cambia la imagen, y dónde?** Si la corrige una persona de la tienda o el sistema de la tienda con
-   una regla. Mi sugerencia, que no exige nada de su lado: la persona elige en **nuestro panel** (que ya
-   muestra los candidatos) y la API devuelve eso como `selected`; el backend de la tienda toma
-   `selected` si existe y, si no, `recommended`. Eso necesita el `PUT .../selection` y la base. Quien prefiera
-   resolverlo en su propio sistema puede usar solo los candidatos.
+1. **¿Quién cambia la imagen, y dónde?** *Entendido el 2026-11-06, a confirmar:* la tienda recorre todos sus
+   códigos, nosotros devolvemos la recomendada y una persona del cliente **confirma o cambia cada imagen en el
+   sistema de la tienda**, incluso por una propia. Entonces la API no necesita una pantalla de elección ni
+   `selected`; el `PUT .../selection` queda solo como opción para medir cuántas veces se cambia la recomendada
+   (pregunta 2).
 2. **¿Se registra qué candidato elige la tienda?** Aunque nadie lo use en pantalla, "cuántas veces se cambió la
    recomendada" es la mejor medida de la calidad de la elección, y sale gratis si hay `PUT`.
 3. **¿Se listan los candidatos con banner que no se pudieron recortar** (marcados, nunca recomendados) o se
