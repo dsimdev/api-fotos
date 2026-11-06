@@ -6,7 +6,7 @@ and whoever runs the next 360 audit. Write **why**, not just what.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning:
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2026-11-06
 
 The project moved from a hosted service to a local drag-and-drop tool (decided 2026-11-06, see
 `docs/proyecto/modelo-local.md`). The hosted pieces (`fotos-app`, the panel) are untouched and on hold.
