@@ -74,7 +74,7 @@ class DeliveryWriterTest {
                 ok(2, "1", "7791337010604", "Flan", photo(Kind.ORIGINAL, ImageFormat.JPEG, (byte) 1)),
                 ok(3, "2", "7791337010710", "Yogur", photo(Kind.CROPPED, ImageFormat.JPEG, (byte) 1), Warning.TOUCHES_EDGE),
                 DeliveryLine.without(4, "3", "7791337009608", "Postre", Result.SIN_IMAGEN, "Ninguna tienda lo vende."),
-                DeliveryLine.without(5, "4", "123", "Raro", Result.DATOS_INVALIDOS, "EAN inválido."),
+                DeliveryLine.invalid(5, "4", "123", "Raro", RowProblem.BAD_EAN, RowProblem.BAD_EAN.message()),
                 DeliveryLine.without(6, "5", "7791337010123", "Leche", Result.ERROR, "Tienda bloqueada."));
 
         String report = Files.readString(written.report(), StandardCharsets.UTF_8);
@@ -158,6 +158,23 @@ class DeliveryWriterTest {
         assertTrue(report.contains("No tiene código de barras") && report.contains("EAN inválido"), report);
     }
 
+    /** The header names the kinds that are really there: a typed-by-hand list had fallen behind RowProblem and misled. */
+    @Test
+    void theGalleryNamesEveryKindOfIgnoredRowThatIsThere() throws IOException {
+        var written = write(
+                ok(2, "640008", "7791337010604", "Flan", photo(Kind.ORIGINAL, ImageFormat.JPEG, (byte) 1)),
+                DeliveryLine.invalid(3, "", "7791337010710", "A", RowProblem.NO_SKU, RowProblem.NO_SKU.message()),
+                DeliveryLine.invalid(4, "640008", "7791337009608", "B", RowProblem.SKU_REUSED, RowProblem.skuReused(2)),
+                DeliveryLine.invalid(5, "S", "", "C", RowProblem.NO_EAN, RowProblem.NO_EAN.message()));
+
+        String html = Files.readString(written.gallery(), StandardCharsets.UTF_8);
+
+        assertTrue(html.contains(RowProblem.NO_SKU.summary()), "missing SKU kind");
+        assertTrue(html.contains(RowProblem.SKU_REUSED.summary()), "repeated SKU kind");
+        assertTrue(html.contains(RowProblem.NO_EAN.summary()), "missing EAN kind");
+        assertFalse(html.contains(RowProblem.BAD_EAN.summary()), "a kind that is not there is not listed");
+    }
+
     @Test
     void theGalleryDoesNotMentionIgnoredRowsWhenThereAreNone() throws IOException {
         var written = write(ok(2, "640008", "7791337010604", "Flan", photo(Kind.ORIGINAL, ImageFormat.JPEG, (byte) 1)));
@@ -174,7 +191,7 @@ class DeliveryWriterTest {
 
     @Test
     void theDeliveryFolderIsNeverReused() throws IOException {
-        Path root = dir.resolve("Fotos Tienda");
+        Path root = dir.resolve("app-fotos");
 
         var first = DeliveryWriter.newFolder(root, "Fotos 2026-11-06");
         var second = DeliveryWriter.newFolder(root, "Fotos 2026-11-06");

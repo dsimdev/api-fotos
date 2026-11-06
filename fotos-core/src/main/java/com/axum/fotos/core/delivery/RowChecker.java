@@ -10,8 +10,9 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Decides, BEFORE any store is asked, which rows of the sheet can be worked on and which are ignored. This is the one
- * place with those rules: the batch run and the delivery writer both use its messages.
+ * Decides, BEFORE any store is asked, which rows of the sheet can be worked on and which are ignored. The batch run
+ * uses it, and the delivery writer takes its messages. The writer keeps its own file-name and repeated-SKU check on
+ * purpose, as a last line of defence: a photo must never be written under a name that is not a file name.
  *
  * <p>A row is ignored when it has no EAN, an invalid EAN, no SKU, a SKU that cannot be a file name, or a SKU that an
  * earlier row already uses for ANOTHER EAN (the first one keeps it). The same SKU with the same EAN is just a repeated

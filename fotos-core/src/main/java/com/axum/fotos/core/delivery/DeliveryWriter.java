@@ -159,6 +159,9 @@ public final class DeliveryWriter {
     private static String gallery(List<DeliveryLine> lines) {
         long ignored = lines.stream().filter(l -> l.result() == Result.DATOS_INVALIDOS).count();
         long shown = lines.size() - ignored;
+        // Derived from the kinds that are really there, not a list typed by hand that falls behind RowProblem.
+        String kinds = lines.stream().filter(l -> l.result() == Result.DATOS_INVALIDOS && l.problem() != null)
+                .map(l -> l.problem().summary()).distinct().collect(Collectors.joining(", "));
         long ok = lines.stream().filter(l -> l.result() == Result.OK).count();
         long withWarnings = lines.stream().filter(l -> l.result() == Result.OK && !l.warnings().isEmpty()).count();
         var cards = new StringBuilder();
@@ -190,7 +193,8 @@ public final class DeliveryWriter {
                 + ".green{color:#2f6b2f}.amber{color:#8a5a00}.red{color:#b3261e}\n</style></head><body>\n"
                 + "<h1>" + shown + " productos consultados</h1>\n<p class=\"sum\">" + ok + " con foto ("
                 + withWarnings + " con avisos para mirar), " + (shown - ok) + " sin foto."
-                + (ignored == 0 ? "" : " Se ignoraron " + ignored + " filas de la planilla con datos que corregir (sin EAN, EAN inválido o SKU que no sirve): están explicadas en <b>reporte.csv</b>.")
+                + (ignored == 0 ? "" : " Se ignoraron " + ignored + " filas de la planilla con datos que corregir"
+                + (kinds.isEmpty() ? "" : " (" + esc(kinds) + ")") + ": están explicadas en <b>reporte.csv</b>.")
                 + " Cada archivo de la carpeta "
                 + "<b>fotos/</b> se llama como su SKU: para cambiar una foto, reemplazá el archivo (y volvé a armar el zip).</p>\n"
                 + "<div class=\"grid\">\n" + cards + "</div></body></html>\n";

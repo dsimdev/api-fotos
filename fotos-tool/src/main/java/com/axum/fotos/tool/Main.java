@@ -122,8 +122,9 @@ public final class Main {
 
         if (cacheDir == null) cacheDir = defaultCacheDir();
         if (outputRoot == null) outputRoot = installDir != null ? installDir : sheet.toAbsolutePath().getParent();
-        // Each product asks every store at once, so the store threads scale with how many products run together.
-        ExecutorService pool = Executors.newFixedThreadPool(8 * parallel);
+        // Each product asks every store at once, so the threads scale with the number of stores AND with how many
+        // products run together (a fixed number would silently queue the lookups once there are more stores).
+        ExecutorService pool = Executors.newFixedThreadPool(storeThreads() * parallel);
         try {
             long started = System.nanoTime();
             long ignoredRows = RowChecker.check(rows).stream().filter(c -> !c.usable()).count();
@@ -148,6 +149,15 @@ public final class Main {
             return fail(out, "No pude terminar: " + e.getMessage());
         } finally {
             pool.shutdownNow();
+        }
+    }
+
+    private static int storeThreads() {
+        try {
+            return Math.max(1, ToolWiring.storeCount());
+        } catch (IOException e) {
+            // A broken stores.txt is reported properly when the finder is built, a moment later.
+            return 8;
         }
     }
 
@@ -192,8 +202,8 @@ public final class Main {
     }
 
     private static void usage(PrintStream out) {
-        out.println("Uso: arrastrá la planilla (.xlsx o .csv, con columnas SKU y EAN) sobre el acceso directo,");
-        out.println("o por consola:  fotos-tool <planilla> [--refresh] [--cache <carpeta>] [--salida <carpeta>] [--paralelo <1-8>] [--no-abrir]");
+        out.println("Uso: arrastrá la planilla (.xlsx o .csv, con columnas SKU y EAN) sobre 'Arrastrar la planilla aca.bat' (o un acceso directo a ese archivo),");
+        out.println("o por consola:  fotos-tool <planilla> [--refresh] [--cache <carpeta>] [--salida <carpeta>] [--paralelo <1-" + MAX_PARALLEL + ">] [--no-abrir]");
         out.println();
         out.println("  --refresh     vuelve a consultar las tiendas por los EAN de esta planilla");
         out.println("  --cache       carpeta donde se guardan las fotos ya encontradas");

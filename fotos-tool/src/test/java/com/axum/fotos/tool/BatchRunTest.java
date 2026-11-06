@@ -94,7 +94,7 @@ class BatchRunTest {
 
         assertEquals(Result.DATOS_INVALIDOS, lines.get(0).result());
         assertTrue(lines.get(0).detail().contains("No tiene código de barras"), lines.get(0).detail());
-        assertTrue(lines.get(1).detail().contains("EAN inválido"), "a present but wrong EAN keeps the old message: " + lines.get(1).detail());
+        assertTrue(lines.get(1).detail().contains("EAN inválido"), "a present but wrong EAN says it is invalid, not missing: " + lines.get(1).detail());
         assertEquals(0, storeCalls.get(), "neither reached a store");
     }
 

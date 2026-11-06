@@ -125,22 +125,22 @@ class MainTest {
     }
 
     @Test
-    void aRunWithSeveralProductsAtOnceGivesTheSameDelivery() throws IOException {
+    void aRunWithSeveralProductsAtOnceWritesTheirPhotosAndSaysSo() throws IOException {
         Path file = sheet("SKU,EAN\n640008,7791337010604\n640012,7791337010710\n77,7791337009608\n");
 
-        int code = runInstalledIn(dir.resolve("Fotos Tienda"), file.toString(), "--paralelo", "4", "--cache", dir.resolve("c").toString());
+        int code = runInstalledIn(dir.resolve("app-fotos"), file.toString(), "--paralelo", "4", "--cache", dir.resolve("c").toString());
 
         assertEquals(0, code, out());
         assertTrue(out().contains("Productos que se consultan a la vez: 4"), out());
-        assertTrue(Files.isRegularFile(dir.resolve("Fotos Tienda").resolve("Fotos 2026-11-06").resolve("fotos").resolve("640008.jpg")));
-        assertTrue(Files.isRegularFile(dir.resolve("Fotos Tienda").resolve("Fotos 2026-11-06").resolve("fotos").resolve("77.jpg")));
+        assertTrue(Files.isRegularFile(dir.resolve("app-fotos").resolve("Fotos 2026-11-06").resolve("fotos").resolve("640008.jpg")));
+        assertTrue(Files.isRegularFile(dir.resolve("app-fotos").resolve("Fotos 2026-11-06").resolve("fotos").resolve("77.jpg")));
     }
 
     /** The sheet is dropped from Downloads; the deliveries must pile up in the tool's own folder, not there. */
     @Test
     void aWholeRunWritesFotosAndTheDateInsideTheProgramFolderNotNextToTheSheet() throws IOException {
         Path file = sheet("SKU,EAN,Descripcion\n640008,7791337010604,Flan\n640012,7791337010710,Yogur\n77,123,Roto\n");
-        Path program = dir.resolve("Fotos Tienda");
+        Path program = dir.resolve("app-fotos");
         Path cache = dir.resolve("cache");
 
         int code = runInstalledIn(program, file.toString(), "--cache", cache.toString());
@@ -174,7 +174,7 @@ class MainTest {
         for (int i = 0; i < 40; i++) csv.append("Y").append(i).append(",EAN roto,12345\n");
         Path file = sheet(csv.toString());
 
-        int code = runInstalledIn(dir.resolve("Fotos Tienda"), file.toString(), "--cache", dir.resolve("c").toString());
+        int code = runInstalledIn(dir.resolve("app-fotos"), file.toString(), "--cache", dir.resolve("c").toString());
 
         assertEquals(0, code, out());
         long printedRows = out().lines().filter(l -> l.startsWith("[")).count();
@@ -183,7 +183,7 @@ class MainTest {
         assertTrue(out().contains("340 ignoradas por tener datos que corregir"), out());
         assertTrue(out().contains("300 sin código de barras (EAN)"), out());
         assertTrue(out().contains("40 con EAN inválido"), out());
-        Path folder = dir.resolve("Fotos Tienda").resolve("Fotos 2026-11-06");
+        Path folder = dir.resolve("app-fotos").resolve("Fotos 2026-11-06");
         String report = Files.readString(folder.resolve("reporte.csv"), StandardCharsets.UTF_8);
         assertEquals(342, report.lines().count(), "header + 341 rows: every one is explained in the report");
         String gallery = Files.readString(folder.resolve("galeria.html"), StandardCharsets.UTF_8);
@@ -196,11 +196,11 @@ class MainTest {
         Path file = sheet("SKU,EAN\n1,7791337010604\n");
         Path elsewhere = dir.resolve("otra").resolve("carpeta");
 
-        int code = runInstalledIn(dir.resolve("Fotos Tienda"), file.toString(), "--salida", elsewhere.toString(), "--cache", dir.resolve("c").toString());
+        int code = runInstalledIn(dir.resolve("app-fotos"), file.toString(), "--salida", elsewhere.toString(), "--cache", dir.resolve("c").toString());
 
         assertEquals(0, code, out());
         assertTrue(Files.isRegularFile(elsewhere.resolve("Fotos 2026-11-06").resolve("fotos").resolve("1.jpg")));
-        assertFalse(Files.exists(dir.resolve("Fotos Tienda")), "the default was not used");
+        assertFalse(Files.exists(dir.resolve("app-fotos")), "the default was not used");
     }
 
     @Test
@@ -215,7 +215,7 @@ class MainTest {
 
     @Test
     void theNoOpenFlagLeavesTheFolderClosed() throws IOException {
-        runInstalledIn(dir.resolve("Fotos Tienda"), sheet("SKU,EAN\n1,7791337010604\n").toString(), "--no-abrir", "--cache", dir.resolve("c").toString());
+        runInstalledIn(dir.resolve("app-fotos"), sheet("SKU,EAN\n1,7791337010604\n").toString(), "--no-abrir", "--cache", dir.resolve("c").toString());
 
         assertTrue(opened.isEmpty());
     }
@@ -223,7 +223,7 @@ class MainTest {
     @Test
     void aSecondRunTheSameDayReusesThePhotosAndNeverOverwritesTheFirstDelivery() throws IOException {
         Path file = sheet("SKU,EAN\n1,7791337010604\n");
-        Path program = dir.resolve("Fotos Tienda");
+        Path program = dir.resolve("app-fotos");
         String cache = dir.resolve("cache").toString();
         runInstalledIn(program, file.toString(), "--cache", cache);
         Files.writeString(program.resolve("Fotos 2026-11-06").resolve("marca-de-la-persona.txt"), "mi cambio");

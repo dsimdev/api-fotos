@@ -52,22 +52,22 @@ public final class PhotoFinder {
     private static final Logger log = LoggerFactory.getLogger(PhotoFinder.class);
 
     /** What one store contributed. */
-    private record StoreResult(String store, boolean answered, boolean sells, boolean incomplete, Candidate candidate, String note) {
+    private record StoreResult(boolean sells, boolean incomplete, Candidate candidate, String note) {
 
-        static StoreResult failed(String store, String note) {
-            return new StoreResult(store, false, false, true, null, note);
+        static StoreResult failed(String note) {
+            return new StoreResult(false, true, null, note);
         }
 
-        static StoreResult doesNotSell(String store) {
-            return new StoreResult(store, true, false, false, null, null);
+        static StoreResult doesNotSell() {
+            return new StoreResult(false, false, null, null);
         }
 
         static StoreResult sellsWithout(String store, String note, boolean incomplete) {
-            return new StoreResult(store, true, true, incomplete, null, store + ": " + note);
+            return new StoreResult(true, incomplete, null, store + ": " + note);
         }
 
-        static StoreResult sellsWith(String store, Candidate candidate) {
-            return new StoreResult(store, true, true, false, candidate, null);
+        static StoreResult sellsWith(Candidate candidate) {
+            return new StoreResult(true, false, candidate, null);
         }
     }
 
@@ -143,13 +143,13 @@ public final class PhotoFinder {
         String id = store.storeId();
         try {
             Optional<StoreProduct> product = store.findByEan(ean);
-            if (product.isEmpty()) return StoreResult.doesNotSell(id);
+            if (product.isEmpty()) return StoreResult.doesNotSell();
             return judge(product.get());
         } catch (StoreException e) {
-            return StoreResult.failed(id, id + ": " + describe(e.kind()));
+            return StoreResult.failed(id + ": " + describe(e.kind()));
         } catch (RuntimeException e) {
             log.warn("Unexpected failure asking {}", id, e);
-            return StoreResult.failed(id, id + ": falló la consulta");
+            return StoreResult.failed(id + ": falló la consulta");
         }
     }
 
@@ -194,7 +194,7 @@ public final class PhotoFinder {
             case UNKNOWN:
                 return StoreResult.sellsWithout(id, "la foto no tiene fondo blanco", false);
             case NONE:
-                return StoreResult.sellsWith(id, new Candidate(id, product.pageUrl(), downloaded.finalUrl(), Candidate.Kind.ORIGINAL,
+                return StoreResult.sellsWith(new Candidate(id, product.pageUrl(), downloaded.finalUrl(), Candidate.Kind.ORIGINAL,
                         downloaded.format(), Math.min(image.getWidth(), image.getHeight()), ImageQuality.productEdgeContact(image),
                         ImageQuality.sharpness(image), downloaded.bytes(), ImageFingerprint.of(image)));
             default:
@@ -209,7 +209,7 @@ public final class PhotoFinder {
         }
         try {
             byte[] bytes = ImageCodec.encode(result.image(), downloaded.format());
-            return StoreResult.sellsWith(id, new Candidate(id, product.pageUrl(), downloaded.finalUrl(), Candidate.Kind.CROPPED,
+            return StoreResult.sellsWith(new Candidate(id, product.pageUrl(), downloaded.finalUrl(), Candidate.Kind.CROPPED,
                     downloaded.format(), result.image().getWidth(), result.edgeContact(),
                     ImageQuality.sharpness(result.image()), bytes, ImageFingerprint.of(result.image())));
         } catch (IOException e) {
@@ -222,10 +222,10 @@ public final class PhotoFinder {
             return future.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return StoreResult.failed("?", "interrumpido");
+            return StoreResult.failed("interrumpido");
         } catch (ExecutionException e) {
             log.warn("A store lookup crashed", e.getCause());
-            return StoreResult.failed("?", "falló la consulta");
+            return StoreResult.failed("falló la consulta");
         }
     }
 
