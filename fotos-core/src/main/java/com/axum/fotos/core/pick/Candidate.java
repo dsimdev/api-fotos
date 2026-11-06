@@ -14,9 +14,15 @@ import com.axum.fotos.core.image.ImageQuality;
  * @param edgeContact see {@link ImageQuality#productEdgeContact}
  * @param sharpness   see {@link ImageQuality#sharpness}
  * @param bytes       exactly what would be written to the delivery, in {@code format}
+ * @param fingerprint see {@link com.axum.fotos.core.image.ImageFingerprint}; 0 when unknown (a photo read back from the cache)
  */
 public record Candidate(String store, String pageUrl, String imageUrl, Kind kind, ImageFormat format, int side,
-                        double edgeContact, double sharpness, byte[] bytes) {
+                        double edgeContact, double sharpness, byte[] bytes, long fingerprint) {
+
+    public Candidate(String store, String pageUrl, String imageUrl, Kind kind, ImageFormat format, int side,
+                     double edgeContact, double sharpness, byte[] bytes) {
+        this(store, pageUrl, imageUrl, kind, format, side, edgeContact, sharpness, bytes, 0L);
+    }
 
     public enum Kind {
         /** The store's own file, untouched. */

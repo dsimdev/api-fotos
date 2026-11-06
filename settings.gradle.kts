@@ -1,3 +1,3 @@
 rootProject.name = "api-fotos"
 
-include("fotos-core", "fotos-stores", "fotos-app")
+include("fotos-core", "fotos-stores", "fotos-app", "fotos-tool")

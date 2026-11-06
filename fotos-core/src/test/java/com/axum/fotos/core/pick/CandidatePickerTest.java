@@ -83,6 +83,72 @@ class CandidatePickerTest {
         assertEquals("carrefour", pick(big, small));
     }
 
+    private static Candidate shot(String store, Kind kind, long fingerprint, int fileId) {
+        return new Candidate(store, "page", "img", kind, ImageFormat.JPEG, 1000, 0.0, 200.0,
+                new byte[]{(byte) fileId}, fingerprint);
+    }
+
+    /** 964107: Cordiez shows an older 946 ml pack from another angle; Jumbo and Carrefour agree on the current 1 L. */
+    @Test
+    void theStoresThatAgreeBeatTheOneThatShowsAnotherPicture() {
+        var agreeA = shot("jumbo", Kind.CROPPED, 0b1111_0000L, 1);
+        var agreeB = shot("carrefour", Kind.CROPPED, 0b1111_0011L, 2);
+        var other = shot("cordiez", Kind.ORIGINAL, 0xFFFF_FFFF_0000_0000L, 3);
+
+        assertEquals("jumbo", pick(agreeA, agreeB, other), "the original no longer wins just for being an original");
+    }
+
+    /** Jumbo, Disco and Vea serve one and the same file: that is one opinion, not three. */
+    @Test
+    void threeCopiesOfOneFileAreOneVote() {
+        var a = shot("jumbo", Kind.CROPPED, 0L, 1);
+        var b = shot("disco", Kind.CROPPED, 0L, 1);
+        var c = shot("vea", Kind.CROPPED, 0L, 1);
+        var other = shot("cordiez", Kind.ORIGINAL, -1L, 2);
+
+        assertEquals("cordiez", pick(a, b, c, other), "1 file against 1 file is no majority: the usual rule decides");
+    }
+
+    @Test
+    void whenEveryStoreShowsADifferentPictureThereIsNoMajorityAndTheUsualRuleDecides() {
+        var a = shot("jumbo", Kind.CROPPED, 0L, 1);
+        var b = shot("carrefour", Kind.CROPPED, 0xFFFF_0000_0000_0000L, 2);
+        var c = shot("cordiez", Kind.ORIGINAL, 0x0000_0000_FFFF_0000L, 3);
+
+        assertEquals("cordiez", pick(a, b, c));
+    }
+
+    /** The layers decide who can be chosen, but everybody votes: a too-tight crop still shows the same picture. */
+    @Test
+    void aCandidateThatTouchesTheEdgeStillVotesButCannotBeChosen() {
+        var tooTight = new Candidate("carrefour", "p", "i", Kind.CROPPED, ImageFormat.JPEG, 2300, 0.38, 300.0, new byte[]{9}, 0b0011L);
+        var agrees = shot("jumbo", Kind.CROPPED, 0b0001L, 1);
+        var other = shot("cordiez", Kind.ORIGINAL, 0xFFFF_FFFF_0000_0000L, 3);
+
+        assertEquals("jumbo", pick(tooTight, agrees, other));
+    }
+
+    /** 610021: the sliced original that two stores share must not outvote the intact crop of the same photo. */
+    @Test
+    void aMajorityOfSlicedCopiesDoesNotOutvoteTheIntactCrop() {
+        var intact = shot("jumbo", Kind.CROPPED, 0L, 1);
+        var slicedA = new Candidate("masonline", "p", "i", Kind.ORIGINAL, ImageFormat.JPEG, 1000, 0.42, 900.0, new byte[]{2}, 0xFFFF_0000_0000_0000L);
+        var slicedB = new Candidate("cordiez", "p", "i", Kind.ORIGINAL, ImageFormat.JPEG, 1000, 0.42, 900.0, new byte[]{3}, 0xFFFF_0000_0000_0000L);
+
+        assertEquals("jumbo", pick(intact, slicedA, slicedB));
+    }
+
+    @Test
+    void theMajorityLayerCanBeSwitchedOff() {
+        var agreeA = shot("jumbo", Kind.CROPPED, 0b1111_0000L, 1);
+        var agreeB = shot("carrefour", Kind.CROPPED, 0b1111_0011L, 2);
+        var other = shot("cordiez", Kind.ORIGINAL, 0xFFFF_FFFF_0000_0000L, 3);
+
+        var picked = CandidatePicker.pick(List.of(agreeA, agreeB, other), ORDER, -1).orElseThrow();
+
+        assertEquals("cordiez", picked.store());
+    }
+
     @Test
     void aStoreNotInTheOrderComesLast() {
         assertEquals("jumbo", pick(c("unknown", Kind.CROPPED, 1000), c("jumbo", Kind.CROPPED, 1000)));

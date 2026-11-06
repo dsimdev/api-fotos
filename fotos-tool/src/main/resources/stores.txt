@@ -1,0 +1,10 @@
+# The stores to ask, one per line: <id> <base URL>. Lines starting with # are comments.
+# The order is the tie-break when two photos are otherwise equal. Measured in docs/proyecto/mediciones.md:
+# Jumbo, Disco and Vea serve exactly the same files, so after Jumbo the last two add requests but no new photo.
+jumbo https://www.jumbo.com.ar
+carrefour https://www.carrefour.com.ar
+masonline https://www.masonline.com.ar
+josimar https://www.josimar.com.ar
+cordiez https://www.cordiez.com.ar
+disco https://www.disco.com.ar
+vea https://www.vea.com.ar

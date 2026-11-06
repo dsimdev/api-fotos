@@ -120,10 +120,6 @@ public final class DeliveryWriter {
         return line.sku().trim() + "." + line.format().extension();
     }
 
-    private static String state(DeliveryLine line) {
-        return line.result() == Result.OK && line.kind() == Candidate.Kind.CROPPED ? "OK_RECORTADA" : line.result().name();
-    }
-
     static String warningText(Warning warning) {
         return switch (warning) {
             case TOUCHES_EDGE -> "El producto toca el borde de la foto: mirar si está cortado.";
@@ -140,7 +136,7 @@ public final class DeliveryWriter {
                     .append(csv(l.sku(), false)).append(',')
                     .append(csv(l.ean(), false)).append(',')
                     .append(csv(l.description(), true)).append(',')
-                    .append(state(l)).append(',')
+                    .append(l.stateName()).append(',')
                     .append(csv(l.store(), true)).append(',')
                     .append(l.kind() == null ? "" : l.kind() == Candidate.Kind.ORIGINAL ? "original" : "recortada").append(',')
                     .append(l.side() == 0 ? "" : Integer.toString(l.side())).append(',')

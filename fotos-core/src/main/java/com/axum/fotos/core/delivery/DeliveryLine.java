@@ -31,9 +31,19 @@ public record DeliveryLine(int row, String sku, String ean, String description, 
         warnings = warnings == null ? List.of() : List.copyOf(warnings);
     }
 
+    /** The state as the report spells it: a photo that had its panel cut off says so. */
+    public String stateName() {
+        return result == Result.OK && kind == Candidate.Kind.CROPPED ? "OK_RECORTADA" : result.name();
+    }
+
     public static DeliveryLine ok(int row, String sku, String ean, String description, Candidate chosen, List<Warning> warnings) {
+        return ok(row, sku, ean, description, chosen, warnings, null);
+    }
+
+    public static DeliveryLine ok(int row, String sku, String ean, String description, Candidate chosen, List<Warning> warnings,
+                                  String note) {
         return new DeliveryLine(row, sku, ean, description, Result.OK, chosen.store(), chosen.kind(), chosen.format(),
-                chosen.side(), warnings, chosen.bytes(), null);
+                chosen.side(), warnings, chosen.bytes(), note);
     }
 
     public static DeliveryLine without(int row, String sku, String ean, String description, Result result, String detail) {
