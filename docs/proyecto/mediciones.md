@@ -309,8 +309,8 @@ recortado" había preferido. Medido sobre el catálogo:
   tres cartones de base plana que el revisor vio completos dan 0,40 a 0,42: **una foto rebanada y un envase completo
   pero justo de marco se miden igual**. Por eso el borde (umbral 0,25) solo manda la foto al fondo, no la descarta.
 - **Nitidez:** 640017 da 6 y la siguiente más baja 30 (umbral 15). Pero **no es comparable entre tiendas**: una imagen
-  de 2000 px, achicada para medir, da menos que la de 1000 px de la misma foto. Comparar "la más nítida" cambiaba 28
-  fotos por versiones más chicas sin ganancia real, así que no se hace.
+  de 2000 px, achicada para medir, da menos que la de 1000 px de la misma foto. Comparar "la más nítida" cambiaba 27
+  fotos más (aparte de 640017) por versiones más chicas sin ganancia real, así que no se hace.
 - **Mayoría entre tiendas:** la huella visual del producto separa bien "misma foto" (0 a 6 bits de 64, aun con otro
   tamaño o recorte) de "otra foto" (17 a 31). Cuando las tiendas muestran fotos distintas, gana la que más repiten
   (Jumbo, Disco y Vea sirven el mismo archivo y cuentan como un voto; todas votan, pero solo puede ser elegida la que no
