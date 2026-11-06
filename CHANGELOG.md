@@ -6,7 +6,10 @@ and whoever runs the next 360 audit. Write **why**, not just what.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning:
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] - 2026-11-06
+
+Everything since 0.2.0, driven by the first real use: where the deliveries go, the real Axum article export, a faster run,
+and rows with bad data. The program is installed in `C:\Dev\app-fotos`.
 
 ### Added
 - `--paralelo <1-8>` (default 3): several products are looked up at the same time. One at a time left the program waiting for
@@ -24,9 +27,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning:
   next to the sheet. A second run the same day is `Fotos <date> (2)`, never a reuse. `DeliveryWriter.newFolderNextTo`
   became `newFolder(root, name)`; the name is chosen by the caller, not taken from the client sheet. Locked in by
   `MainTest` and `DeliveryWriterTest.theDeliveryFolderIsNeverReused`.
-- `scripts/herramienta/instalar.ps1` installs to `C:\Dev\Fotos Tienda` and no longer creates a desktop shortcut (each person
+- `scripts/herramienta/instalar.ps1` installs to `C:\Dev\app-fotos` and no longer creates a desktop shortcut (each person
   makes theirs). Because deliveries now live in the install folder, an update replaces only `bin`, `lib` and the launcher
   and never wipes the folder; it still refuses a non-empty folder that is not a previous install.
+- Delivery folders are git-ignored by their new name (`Fotos 20??-??-??` and its `(n)` copies), which is what a run writes next to a
+  sheet when it is not running from an install. The old `* - fotos` rules matched a name nothing produces any more.
 - A row with no barcode now says "No tiene código de barras (EAN) en la planilla" instead of "EAN inválido": in an export of
   a client whose articles have no barcode loaded, that is the common case and "invalid" sent people looking for a typo.
   `BatchRunTest.aRowWithoutAnEanSaysItIsMissingInsteadOfInvalid`.
@@ -49,6 +54,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning:
 - Seven valid barcodes in Axum's export were rejected as invalid: they carry non-breaking spaces (U+00A0) before or after the
   digits, and `String.trim()` leaves those alone. Cells are now trimmed of Unicode spaces, zero-width characters and a stray
   BOM, at the ends only; no digit is ever guessed. `SpreadsheetReaderTest.nonBreakingSpacesAroundACellAreWhitespaceToo`.
+- The gallery header listed the kinds of ignored rows from a list typed by hand that had fallen behind `RowProblem` (it left out
+  a missing SKU and a repeated SKU), so a sheet with repeated SKUs told the person to look for the wrong cause. It is now derived
+  from the kinds that are really there. `DeliveryWriterTest.theGalleryNamesEveryKindOfIgnoredRowThatIsThere`.
+- The thread pool of a run was a fixed 8 per product in flight: with more than 8 stores the lookups would have queued silently and
+  `--paralelo` would have stopped paying off. It is now the number of stores in `stores.txt` times `--paralelo`.
+- Leftovers of the service model, found by an independent read of the Java modules: two fields of `PhotoFinder.StoreResult` that
+  were filled and never read, comments in `StoreCatalogs`, `StoreProduct`, `Candidate` and the `fotos-core` description that
+  promised an audit trail the report does not show, the usage text pointing at "the shortcut" instead of the launcher, and a
+  README path that had lost its backslashes. The rest of that review (shared pixel helpers, a single User-Agent constant, tests
+  that overlap) was left out on purpose: refactors with no urgency, one of them touching a header the stores see.
 
 ### Security
 - Client article exports (they carry costs and price lists) sit in the repo root when dropped there: `/*.csv` is now git-ignored,
@@ -101,10 +116,14 @@ The project moved from a hosted service to a local drag-and-drop tool (decided 2
 - Image URLs come from the stores: only http(s), every resolved address must be public, redirects re-checked,
   decoding refuses a declared canvas over 40 megapixels before allocating it.
 
-## [0.1.0] - YYYY-MM-DD
+## [0.1.0] - 2026-11-05
+
+Never tagged or published: the skeleton of the hosted-service model, before the project became a local tool. It lives on in
+`fotos-app`, frozen and untouched.
 
 ### Added
-- Initial project scaffold.
+- Spring Boot service with the store connector (VTEX by EAN, with pacing, one retry and a circuit breaker), the embedded
+  Next panel and an EAN lookup demo that is off by default and refuses to start unless the server listens on localhost.
 
 <!--
 Sections: Added / Changed / Fixed / Removed / Security.

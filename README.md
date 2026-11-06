@@ -4,11 +4,11 @@ Herramienta local que convierte la planilla de un cliente (columnas **SKU** y **
 por producto, nombrada con el SKU**, lista para que la tienda la suba. Las fotos salen de los catálogos públicos de
 supermercados argentinos (VTEX), consultados por código de barras.
 
-**Versión actual:** 0.2.0
+**Versión actual:** 0.3.0
 
 ## Cómo se usa
 
-1. Una vez, instalarla: `scripts/herramienta/instalar.ps1` (necesita Java 21). La deja en `C:DevFotos Tienda`; no crea
+1. Una vez, instalarla: `scripts/herramienta/instalar.ps1` (necesita Java 21). La deja en `C:\Dev\app-fotos`; no crea
    accesos directos, esos los arma cada persona. Se puede correr de nuevo para actualizar: reemplaza solo el programa y
    no toca las entregas.
 2. Cada vez que un cliente manda su lista: **arrastrar la planilla (.xlsx o .csv) sobre `Arrastrar la planilla aca.bat`**
@@ -17,8 +17,12 @@ supermercados argentinos (VTEX), consultados por código de barras.
    y no donde estaba la planilla. Si se corre dos veces el mismo día, la segunda es `Fotos 2026-11-06 (2)`:
    - `fotos\` una foto por SKU (`<SKU>.jpg` o `<SKU>.png`),
    - `fotos.zip` las mismas fotos, listas para pasarle a la tienda,
-   - `reporte.csv` una línea por producto: estado, tienda de origen y avisos,
+   - `reporte.csv` una línea por **fila de la planilla**: estado, tienda de origen, avisos y, si la fila tenía algo mal, qué,
    - `galeria.html` lo mismo para mirar. **Mirarla antes de entregar**: la herramienta no detecta marcas ajenas.
+
+**Lo que está mal se ignora.** Una fila sin código de barras, con un EAN inválido, sin SKU o con un SKU que no sirve de
+nombre de archivo no se consulta ni se muestra una por una: la pantalla las cuenta al final ("239 sin código de barras") y
+cada una queda explicada en `reporte.csv`, que es donde se arreglan en el sistema de origen.
 
 Cambiar una foto es reemplazar el archivo en `fotos\` (y volver a armar el zip). Si el reporte dice `ERROR`, volver a
 correr la misma planilla: lo ya bajado queda guardado y solo se piden esos. Por consola:
