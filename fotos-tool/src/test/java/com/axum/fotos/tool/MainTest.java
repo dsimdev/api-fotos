@@ -191,6 +191,101 @@ class MainTest {
         assertTrue(gallery.contains("Se ignoraron 340 filas"), gallery.substring(0, Math.min(900, gallery.length())));
     }
 
+    // ---- the photo bank: banco-fotos inside the program folder, keyed by EAN, with an index and photos put in by hand ----
+
+    @Test
+    void theBankLivesInsideTheProgramFolderByDefaultAndGetsItsIndexAndItsExplanation() throws IOException {
+        Path program = dir.resolve("app-fotos");
+
+        int code = runInstalledIn(program, sheet("SKU,EAN\n640008,7791337010604\n").toString());
+
+        assertEquals(0, code, out());
+        Path bank = program.resolve("banco-fotos");
+        assertTrue(Files.isRegularFile(bank.resolve("7791337010604").resolve("image.jpg")), "keyed by EAN, never by SKU");
+        assertFalse(Files.exists(bank.resolve("640008")), "the SKU is the client's: it is not in the bank");
+        assertTrue(Files.isRegularFile(bank.resolve("indice.csv")));
+        assertTrue(Files.readString(bank.resolve("indice.csv"), StandardCharsets.UTF_8).contains("7791337010604"));
+        assertTrue(Files.isRegularFile(bank.resolve("README.md")) && Files.isRegularFile(bank.resolve(".gitignore")));
+        assertTrue(out().contains("Banco de fotos: " + bank), out());
+        assertTrue(Files.readString(bank.resolve("7791337010604").resolve("entry.properties")).contains("pageUrl"), "where it came from is kept");
+    }
+
+    @Test
+    void theBankIsKeptWhenTheProgramIsReinstalledOnTopOfItsFolder() throws IOException {
+        // The installer replaces only bin, lib and the launcher: a bank sitting next to them must be a sibling, not inside them.
+        Path program = dir.resolve("app-fotos");
+        runInstalledIn(program, sheet("SKU,EAN\n640008,7791337010604\n").toString());
+
+        assertEquals(List.of("banco-fotos"), Files.list(program).map(p -> p.getFileName().toString())
+                .filter(n -> !n.startsWith("Fotos ")).toList());
+    }
+
+    /** The case that matters: a store's photo was bad (or there is none), you drop yours and the next run uses it. */
+    @Test
+    void aPhotoDroppedInTheBankIsRecognisedAtTheStartOfARunAndUsedForThatEan() throws IOException {
+        Path program = dir.resolve("app-fotos");
+        Path bank = Files.createDirectories(program.resolve("banco-fotos"));
+        Files.write(bank.resolve("7791337010710.jpg"), Pics.clean("mine").bytes());
+
+        int code = runInstalledIn(program, sheet("SKU,EAN\n640012,7791337010710\n").toString());
+
+        assertEquals(0, code, out());
+        assertTrue(out().contains("Fotos propias reconocidas en el banco: 1 (7791337010710)"), out());
+        assertTrue(Files.isRegularFile(program.resolve("Fotos 2026-11-06").resolve("fotos").resolve("640012.jpg")),
+                "the stub store does not sell that EAN, so this photo can only be yours");
+        String report = Files.readString(program.resolve("Fotos 2026-11-06").resolve("reporte.csv"), StandardCharsets.UTF_8);
+        assertTrue(report.contains("propia"), report);
+        assertFalse(Files.exists(bank.resolve("7791337010710.jpg")), "taken out of the root once saved");
+        assertTrue(Files.readString(bank.resolve("indice.csv"), StandardCharsets.UTF_8).contains("propia"));
+    }
+
+    @Test
+    void aFileInTheBankWithAWrongNameIsReportedAndLeftAlone() throws IOException {
+        Path program = dir.resolve("app-fotos");
+        Path bank = Files.createDirectories(program.resolve("banco-fotos"));
+        Files.write(bank.resolve("SKU-640008.jpg"), Pics.clean("x").bytes());
+
+        runInstalledIn(program, sheet("SKU,EAN\n640008,7791337010604\n").toString());
+
+        assertTrue(out().contains("Se dejó sin tocar 'SKU-640008.jpg'") && out().contains("EAN"), out());
+        assertTrue(Files.exists(bank.resolve("SKU-640008.jpg")));
+    }
+
+    @Test
+    void bancoRecognisesDroppedPhotosAndWritesTheIndexWithoutNeedingASheet() throws IOException {
+        Path program = dir.resolve("app-fotos");
+        Path bank = Files.createDirectories(program.resolve("banco-fotos"));
+        Files.write(bank.resolve("7791337010604.jpg"), Pics.clean("mine").bytes());
+
+        int code = runInstalledIn(program, "--banco");
+
+        assertEquals(0, code, out());
+        assertTrue(out().contains("Fotos propias reconocidas en el banco: 1"), out());
+        assertTrue(out().contains("1 fotos (1 propias"), out());
+        assertTrue(Files.readString(bank.resolve("indice.csv"), StandardCharsets.UTF_8).contains("7791337010604"));
+        try (var entries = Files.list(program)) {
+            assertEquals(List.of("banco-fotos"), entries.map(p -> p.getFileName().toString()).toList(), "no delivery folder was made");
+        }
+        assertTrue(opened.isEmpty());
+    }
+
+    @Test
+    void bancoDoesNotTakeASheet() throws IOException {
+        assertEquals(1, run("--banco", sheet("SKU,EAN\n1,7791337010604\n").toString()));
+        assertTrue(out().contains("--banco no lleva planilla"), out());
+    }
+
+    @Test
+    void theCacheOptionStillPutsTheBankSomewhereElse() throws IOException {
+        Path program = dir.resolve("app-fotos");
+        Path elsewhere = dir.resolve("otro-banco");
+
+        runInstalledIn(program, sheet("SKU,EAN\n640008,7791337010604\n").toString(), "--cache", elsewhere.toString());
+
+        assertTrue(Files.isRegularFile(elsewhere.resolve("7791337010604").resolve("image.jpg")));
+        assertFalse(Files.exists(program.resolve("banco-fotos")));
+    }
+
     @Test
     void theOutputOptionPutsTheDeliveryElsewhereAndCreatesTheFolderIfNeeded() throws IOException {
         Path file = sheet("SKU,EAN\n1,7791337010604\n");

@@ -8,21 +8,31 @@ import com.axum.fotos.core.image.ImageQuality;
  * panel was cut off. An image that still carries a panel is never a candidate.
  *
  * <p>Each one keeps where it came from (store, product page, image URL). The report shows the store, whether the panel
- * was cut, the size and the warnings; the product page and the image URL are only kept in the cache entry, and nothing
+ * was cut, the size and the warnings; the product page and the image URL are only kept in the bank entry, and nothing
  * says why this candidate was chosen over the others.
  *
  * @param side        the shorter side, in pixels, of the image in {@code bytes}
  * @param edgeContact see {@link ImageQuality#productEdgeContact}
  * @param sharpness   see {@link ImageQuality#sharpness}
  * @param bytes       exactly what would be written to the delivery, in {@code format}
- * @param fingerprint see {@link com.axum.fotos.core.image.ImageFingerprint}; 0 when unknown (a photo read back from the cache)
+ * @param fingerprint see {@link com.axum.fotos.core.image.ImageFingerprint}; 0 when unknown (a photo read back from the bank)
+ * @param original    the store's file as downloaded, WITHOUT the crop, in the same {@code format}; null when {@code bytes}
+ *                    already is the store's file untouched. The bank keeps it so a better cropper can redo the crop
  */
 public record Candidate(String store, String pageUrl, String imageUrl, Kind kind, ImageFormat format, int side,
-                        double edgeContact, double sharpness, byte[] bytes, long fingerprint) {
+                        double edgeContact, double sharpness, byte[] bytes, long fingerprint, byte[] original) {
+
+    /** The "store" of a photo that a person put in the bank by hand. */
+    public static final String OWN_STORE = "propia";
+
+    public Candidate(String store, String pageUrl, String imageUrl, Kind kind, ImageFormat format, int side,
+                     double edgeContact, double sharpness, byte[] bytes, long fingerprint) {
+        this(store, pageUrl, imageUrl, kind, format, side, edgeContact, sharpness, bytes, fingerprint, null);
+    }
 
     public Candidate(String store, String pageUrl, String imageUrl, Kind kind, ImageFormat format, int side,
                      double edgeContact, double sharpness, byte[] bytes) {
-        this(store, pageUrl, imageUrl, kind, format, side, edgeContact, sharpness, bytes, 0L);
+        this(store, pageUrl, imageUrl, kind, format, side, edgeContact, sharpness, bytes, 0L, null);
     }
 
     public enum Kind {
@@ -38,5 +48,10 @@ public record Candidate(String store, String pageUrl, String imageUrl, Kind kind
 
     public boolean soft() {
         return sharpness < ImageQuality.SOFT;
+    }
+
+    /** A photo a person chose: it is delivered as it is and none of the automatic quality checks apply to it. */
+    public boolean own() {
+        return OWN_STORE.equals(store);
     }
 }

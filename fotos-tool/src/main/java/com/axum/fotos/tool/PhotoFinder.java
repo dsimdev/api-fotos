@@ -89,11 +89,15 @@ public final class PhotoFinder {
         this.pool = pool;
     }
 
-    /** @param refresh forget what the cache knows about this EAN and ask the stores again */
+    /**
+     * @param refresh ask the stores again even though the bank already has this EAN. The stored photo is only replaced
+     *                when a NEW one is found: if the stores fail, no longer sell it or have nothing usable, the stored
+     *                one is kept, because the bank has to outlive the stores. A photo a person put in is never refreshed.
+     */
     public Lookup find(Ean ean, boolean refresh) throws IOException {
-        if (refresh) cache.remove(ean);
-        Optional<Lookup> cached = fromCache(ean);
-        if (cached.isPresent()) return cached.get();
+        Optional<Lookup> stored = fromCache(ean);
+        if (stored.isPresent() && (!refresh || isOwn(stored.get()))) return stored.get();
+        Optional<Lookup> keep = stored.filter(l -> l.status() == Lookup.Status.FOUND);
 
         List<Future<StoreResult>> pending = stores.stream().map(store -> pool.submit(() -> ask(store, ean))).toList();
         List<StoreResult> results = pending.stream().map(PhotoFinder::await).toList();
@@ -105,22 +109,35 @@ public final class PhotoFinder {
         if (best.isPresent()) {
             Candidate chosen = best.get();
             if (incomplete && !Warning.of(chosen).isEmpty()) {
+                if (keep.isPresent()) return kept(keep.get(), "Se volvió a consultar pero algunas tiendas no respondieron.");
                 return Lookup.found(chosen, "Algunas tiendas no respondieron: no se guardó para volver a probar la próxima vez.", false);
             }
             cache.saveReady(ean, chosen, clock.instant());
             return Lookup.found(chosen, null, false);
         }
         if (incomplete) {
+            if (keep.isPresent()) return kept(keep.get(), "No se pudo consultar ahora: " + notesOf(results, true));
             return Lookup.error("No se pudo consultar: " + notesOf(results, true));
         }
         if (results.stream().noneMatch(StoreResult::sells)) {
+            if (keep.isPresent()) return kept(keep.get(), "Ninguna tienda la vende hoy.");
             String detail = "Ninguna tienda lo vende.";
             cache.saveEmpty(ean, CacheEntry.Status.NOT_FOUND, detail, clock.instant());
             return Lookup.noImage(detail, false);
         }
+        if (keep.isPresent()) return kept(keep.get(), "Las tiendas ya no tienen una foto utilizable. " + notesOf(results, false));
         String detail = "Hay tiendas que lo venden pero sin una foto utilizable. " + notesOf(results, false);
         cache.saveEmpty(ean, CacheEntry.Status.NO_USABLE, detail, clock.instant());
         return Lookup.noImage(detail, false);
+    }
+
+    private static boolean isOwn(Lookup lookup) {
+        return lookup.chosen() != null && lookup.chosen().own();
+    }
+
+    /** A refresh that found nothing better: the stored photo stays, and the report says why it was not updated. */
+    private static Lookup kept(Lookup stored, String why) {
+        return Lookup.found(stored.chosen(), why + " Se conservó la foto guardada.", true);
     }
 
     private Optional<Lookup> fromCache(Ean ean) {
@@ -211,7 +228,7 @@ public final class PhotoFinder {
             byte[] bytes = ImageCodec.encode(result.image(), downloaded.format());
             return StoreResult.sellsWith(new Candidate(id, product.pageUrl(), downloaded.finalUrl(), Candidate.Kind.CROPPED,
                     downloaded.format(), result.image().getWidth(), result.edgeContact(),
-                    ImageQuality.sharpness(result.image()), bytes, ImageFingerprint.of(result.image())));
+                    ImageQuality.sharpness(result.image()), bytes, ImageFingerprint.of(result.image()), downloaded.bytes()));
         } catch (IOException e) {
             return StoreResult.sellsWithout(id, "no se pudo guardar la imagen recortada", false);
         }

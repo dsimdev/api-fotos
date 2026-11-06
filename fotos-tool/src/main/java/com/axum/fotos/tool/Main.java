@@ -1,5 +1,10 @@
 package com.axum.fotos.tool;
 
+import com.axum.fotos.core.cache.BankFiles;
+import com.axum.fotos.core.cache.BankIndex;
+import com.axum.fotos.core.cache.BankIngest;
+import com.axum.fotos.core.cache.CacheEntry;
+import com.axum.fotos.core.cache.LocalCache;
 import com.axum.fotos.core.delivery.DeliveryLine;
 import com.axum.fotos.core.delivery.DeliveryLine.Result;
 import com.axum.fotos.core.delivery.DeliveryWriter;
@@ -23,6 +28,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * The way a person uses this: drop a product list (xlsx or csv with SKU and EAN) on the launcher and get a folder
@@ -30,14 +36,18 @@ import java.util.function.Consumer;
  *
  * <pre>
  *   fotos-tool &lt;planilla&gt; [--refresh] [--cache &lt;carpeta&gt;] [--salida &lt;carpeta&gt;] [--paralelo &lt;1-8&gt;] [--no-abrir]
+ *   fotos-tool --banco [--cache &lt;carpeta&gt;]
  * </pre>
  *
  * <p>Each run writes a new folder {@code Fotos <date>} INSIDE the folder the program is installed in (the sheet is
  * usually dropped from Downloads, and that is not where the deliveries should pile up). {@code --salida} puts them
  * elsewhere. Run from a build and not from an install, with no {@code --salida}, it writes next to the sheet.
  *
- * <p>The cache lives outside the delivery folder so that the next list reuses every photo already found.
- * {@code --refresh} forgets what is known about the EANs of THIS list and asks the stores again.
+ * <p>The photo BANK ({@code banco-fotos} inside the program folder, by EAN) lives outside the delivery folder so that
+ * the next list reuses every photo already found. A photo a person drops in the bank as {@code <EAN>.jpg} is
+ * recognised at the start of every run, and {@code --banco} does only that and rewrites the index.
+ * {@code --refresh} asks the stores again for the EANs of THIS list and replaces a stored photo only with a better
+ * one found: it never throws a stored photo away.
  */
 public final class Main {
 
@@ -71,11 +81,12 @@ public final class Main {
         Path cacheDir = null;
         Path outputRoot = null;
         int parallel = DEFAULT_PARALLEL;
-        boolean refresh = false, open = true;
+        boolean refresh = false, open = true, bankOnly = false;
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
                 case "--refresh" -> refresh = true;
                 case "--no-abrir" -> open = false;
+                case "--banco" -> bankOnly = true;
                 case "--cache" -> {
                     if (i + 1 >= args.length) return fail(out, "Falta la carpeta después de --cache.");
                     cacheDir = Path.of(args[++i]);
@@ -104,6 +115,10 @@ public final class Main {
                 }
             }
         }
+        if (bankOnly) {
+            if (sheet != null) return fail(out, "--banco no lleva planilla: solo reconoce las fotos propias y arma el índice.");
+            return tendBank(out, new LocalCache(cacheDir != null ? cacheDir : defaultBankDir(installDir)), clock);
+        }
         if (sheet == null) {
             usage(out);
             return 1;
@@ -120,7 +135,7 @@ public final class Main {
         }
         if (rows.isEmpty()) return fail(out, "La planilla no tiene filas con SKU y EAN.");
 
-        if (cacheDir == null) cacheDir = defaultCacheDir();
+        if (cacheDir == null) cacheDir = defaultBankDir(installDir);
         if (outputRoot == null) outputRoot = installDir != null ? installDir : sheet.toAbsolutePath().getParent();
         // Each product asks every store at once, so the threads scale with the number of stores AND with how many
         // products run together (a fixed number would silently queue the lookups once there are more stores).
@@ -130,11 +145,14 @@ public final class Main {
             long ignoredRows = RowChecker.check(rows).stream().filter(c -> !c.usable()).count();
             out.println("Planilla: " + sheet.getFileName() + " (" + rows.size() + " filas: " + (rows.size() - ignoredRows)
                     + " para consultar" + (ignoredRows > 0 ? " y " + ignoredRows + " que se ignoran por tener datos que corregir" : "") + ")");
-            out.println("Caché de fotos: " + cacheDir);
+            out.println("Banco de fotos: " + cacheDir);
             out.println("Las entregas se guardan en: " + outputRoot);
             out.println("Productos que se consultan a la vez: " + parallel);
-            out.println(refresh ? "Se vuelve a consultar todo (--refresh)." : "Lo que ya se bajó antes sale de la caché.");
+            out.println(refresh ? "Se vuelve a consultar todo (--refresh); una foto guardada solo se cambia si se encuentra otra." : "Lo que ya se bajó antes sale del banco.");
             out.println();
+
+            LocalCache bank = new LocalCache(cacheDir);
+            takeDroppedPhotos(out, bank, clock);
 
             PhotoFinder finder = factory.create(cacheDir, pool);
             List<DeliveryLine> lines = BatchRun.run(rows, finder, refresh, parallel, (done, total, line, fromCache) ->
@@ -143,6 +161,7 @@ public final class Main {
             Path folder = DeliveryWriter.newFolder(outputRoot, "Fotos " + LocalDate.now(clock));
             var written = DeliveryWriter.write(folder, lines);
             summary(out, written, Duration.ofNanos(System.nanoTime() - started));
+            writeIndex(out, bank);
             if (open) opener.accept(folder);
             return 0;
         } catch (IOException e) {
@@ -205,8 +224,9 @@ public final class Main {
         out.println("Uso: arrastrá la planilla (.xlsx o .csv, con columnas SKU y EAN) sobre 'Arrastrar la planilla aca.bat' (o un acceso directo a ese archivo),");
         out.println("o por consola:  fotos-tool <planilla> [--refresh] [--cache <carpeta>] [--salida <carpeta>] [--paralelo <1-" + MAX_PARALLEL + ">] [--no-abrir]");
         out.println();
-        out.println("  --refresh     vuelve a consultar las tiendas por los EAN de esta planilla");
-        out.println("  --cache       carpeta donde se guardan las fotos ya encontradas");
+        out.println("  --refresh     vuelve a consultar las tiendas por los EAN de esta planilla (no pierde la foto guardada si no encuentra otra)");
+        out.println("  --cache       carpeta del banco de fotos (por defecto, banco-fotos dentro de la carpeta del programa)");
+        out.println("  --banco       sin planilla: reconoce las fotos propias dejadas en el banco (<EAN>.jpg) y arma el índice");
         out.println("  --salida      carpeta donde se crea \"Fotos <fecha>\" (por defecto, la carpeta del programa)");
         out.println("  --paralelo    cuántos productos se consultan a la vez (por defecto " + DEFAULT_PARALLEL + "); más rápido, más tráfico a las tiendas");
         out.println("  --no-abrir    no abre la carpeta al terminar");
@@ -217,13 +237,73 @@ public final class Main {
         return 1;
     }
 
-    /** The cache outlives any one list: the same product in the next client's sheet is not asked again. */
-    private static Path defaultCacheDir() {
+    /**
+     * The bank outlives any one list: the same product in the next client's sheet is not asked again. Where it lives:
+     * {@code --cache}, else {@code FOTOS_CACHE}, else {@code banco-fotos} inside the program folder (the installer never
+     * touches it), else, when not running from an install, the old per-user folder.
+     */
+    private static Path defaultBankDir(Path installDir) {
         String override = System.getenv("FOTOS_CACHE");
         if (override != null && !override.isBlank()) return Path.of(override);
+        if (installDir != null) return installDir.resolve("banco-fotos");
         String local = System.getenv("LOCALAPPDATA");
         Path base = local != null && !local.isBlank() ? Path.of(local) : Path.of(System.getProperty("user.home"), ".local", "share");
         return base.resolve("api-fotos").resolve("cache");
+    }
+
+    /** {@code --banco}: recognise the photos dropped in the bank, rewrite the index and say what the bank holds. */
+    private static int tendBank(PrintStream out, LocalCache bank, Clock clock) {
+        out.println("Banco de fotos: " + bank.root());
+        takeDroppedPhotos(out, bank, clock);
+        writeIndex(out, bank);
+        try {
+            int ready = 0, manual = 0, withOriginal = 0, without = 0;
+            for (var ean : bank.eans()) {
+                var entry = bank.find(ean);
+                if (entry.isEmpty()) continue;
+                if (entry.get().status() != CacheEntry.Status.READY) {
+                    without++;
+                    continue;
+                }
+                ready++;
+                if (entry.get().source() == CacheEntry.Source.MANUAL) manual++;
+                if (entry.get().hasOriginal()) withOriginal++;
+            }
+            out.println(ready + " fotos (" + manual + " propias, " + withOriginal + " con el original sin recortar) y "
+                    + without + " EAN sin foto.");
+        } catch (IOException e) {
+            out.println("No pude leer el banco: " + e.getMessage());
+            return 1;
+        }
+        return 0;
+    }
+
+    /** Photos a person dropped in the bank: recognised before anything is looked up, so a run already uses them. */
+    private static void takeDroppedPhotos(PrintStream out, LocalCache bank, Clock clock) {
+        try {
+            BankFiles.ensure(bank.root());
+            BankIngest.Report report = BankIngest.ingest(bank, clock);
+            if (!report.ingested().isEmpty()) {
+                out.println("Fotos propias reconocidas en el banco: " + report.ingested().size() + " ("
+                        + report.ingested().stream().limit(10).map(e -> e.value()).collect(Collectors.joining(", "))
+                        + (report.ingested().size() > 10 ? ", ..." : "") + ")");
+            }
+            report.skipped().stream().limit(10).forEach(s ->
+                    out.println("Se dejó sin tocar '" + s.file() + "' en el banco: " + s.reason() + "."));
+            if (report.skipped().size() > 10) out.println("... y " + (report.skipped().size() - 10) + " archivos más que no se pudieron reconocer.");
+        } catch (IOException e) {
+            out.println("No pude revisar las fotos propias del banco: " + e.getMessage());
+        }
+    }
+
+    /** The index is for the person and for git: a failure to write it never costs the delivery that was just made. */
+    private static void writeIndex(PrintStream out, LocalCache bank) {
+        try {
+            int lines = BankIndex.write(bank);
+            out.println("Banco de fotos: " + lines + " EAN en " + bank.root().resolve(BankIndex.FILE_NAME));
+        } catch (IOException e) {
+            out.println("No pude escribir el índice del banco: " + e.getMessage());
+        }
     }
 
     /**

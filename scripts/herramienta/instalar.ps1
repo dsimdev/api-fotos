@@ -6,9 +6,9 @@
   Compila (gradlew installDist) y copia el programa a la carpeta de instalación. Los accesos directos los crea
   cada persona a mano: este script no toca el escritorio.
 
-  Las entregas ("Fotos <fecha>") se crean DENTRO de esta misma carpeta, así que al actualizar se reemplaza solo el
-  programa (bin, lib y el lanzador) y nada más: las entregas ya generadas no se tocan. La caché de fotos vive aparte,
-  en %LOCALAPPDATA%\api-fotos\cache.
+  Las entregas ("Fotos <fecha>") y el banco de fotos (banco-fotos) se crean DENTRO de esta misma carpeta, así que al
+  actualizar se reemplaza solo el programa (bin, lib y el lanzador) y nada más: las entregas ya generadas y el banco
+  no se tocan nunca.
 
 .PARAMETER Carpeta
   Donde queda instalado el programa y donde se crean las entregas. Por defecto C:\Dev\app-fotos.

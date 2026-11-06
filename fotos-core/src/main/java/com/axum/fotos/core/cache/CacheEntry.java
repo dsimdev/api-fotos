@@ -5,18 +5,20 @@ import com.axum.fotos.core.pick.Candidate;
 import java.time.Instant;
 
 /**
- * What the local cache remembers about one EAN. Entries NEVER expire (decided 2026-11-06): the picture of a
+ * What the photo bank remembers about one EAN. Entries NEVER expire (decided 2026-11-06): the picture of a
  * product does not change under the same EAN, and a lookup is a request to a third party. Refreshing is an
- * explicit act.
+ * explicit act, and it never throws a photo away before it has a replacement.
  *
  * <p>An error is never an entry: only an answer is. A store that was down says nothing about the product.
  *
- * @param store      for READY: the store the image came from. Null otherwise
- * @param detail     for NOT_FOUND and NO_USABLE: what was found, for the report. Null for READY
+ * @param store       for READY: the store the image came from, or {@link Candidate#OWN_STORE}. Null otherwise
+ * @param detail      for NOT_FOUND and NO_USABLE: what was found, for the report. Null for READY
+ * @param source      where the photo came from: a store, or a person who put it in the bank by hand
+ * @param hasOriginal the store's file, as downloaded and before the crop, is also in the bank
  */
 public record CacheEntry(Status status, Instant fetchedAt, String store, String pageUrl, String imageUrl,
                          Candidate.Kind kind, ImageFormat format, int side, double edgeContact, double sharpness,
-                         String detail) {
+                         String detail, Source source, boolean hasOriginal) {
 
     public enum Status {
         /** There is a photo, kept next to the entry. */
@@ -25,5 +27,11 @@ public record CacheEntry(Status status, Instant fetchedAt, String store, String 
         NOT_FOUND,
         /** Some store sells it but none has an image fit to deliver (only with the template panel, only WebP...). */
         NO_USABLE
+    }
+
+    public enum Source {
+        STORE,
+        /** A photo a person dropped in the bank. A refresh never replaces it. */
+        MANUAL
     }
 }

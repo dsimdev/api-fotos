@@ -20,8 +20,11 @@ public enum Warning {
 
     public static List<Warning> of(Candidate chosen) {
         var warnings = new ArrayList<Warning>();
-        if (chosen.touchesEdge()) warnings.add(TOUCHES_EDGE);
-        if (chosen.sharpness() < ImageQuality.SOFT_WARNING) warnings.add(SOFT);
+        // A photo a person put in by hand was chosen on purpose: only its size is worth saying.
+        if (!chosen.own()) {
+            if (chosen.touchesEdge()) warnings.add(TOUCHES_EDGE);
+            if (chosen.sharpness() < ImageQuality.SOFT_WARNING) warnings.add(SOFT);
+        }
         if (chosen.side() < MIN_SIDE) warnings.add(LOW_RESOLUTION);
         return warnings;
     }

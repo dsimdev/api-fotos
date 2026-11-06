@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,17 +72,129 @@ class LocalCacheTest {
         assertEquals("No store sells it", entry.detail());
     }
 
+    private List<String> filesOf(Ean ean) throws IOException {
+        try (Stream<Path> files = Files.list(cache.root().resolve(ean.value()))) {
+            return files.map(p -> p.getFileName().toString()).sorted().toList();
+        }
+    }
+
     @Test
-    void savingTwiceIsIdempotentAndTheLatestWins() throws IOException {
+    void savingTheSamePhotoTwiceIsIdempotent() throws IOException {
+        cache.saveReady(EAN, candidate(ImageFormat.JPEG, new byte[]{1}), NOW);
+        cache.saveReady(EAN, candidate(ImageFormat.JPEG, new byte[]{1}), NOW.plusSeconds(60));
+
+        assertEquals(List.of("entry.properties", "image.jpg"), filesOf(EAN), "no temporary files and no pointless previous photo");
+        assertEquals(NOW.plusSeconds(60), cache.find(EAN).orElseThrow().fetchedAt());
+    }
+
+    /** The bank has to outlive its sources: a different photo never replaces one without keeping it. */
+    @Test
+    void aDifferentPhotoReplacesTheOldOneAndKeepsItAsThePreviousOne() throws IOException {
         cache.saveReady(EAN, candidate(ImageFormat.JPEG, new byte[]{1}), NOW);
         cache.saveReady(EAN, candidate(ImageFormat.JPEG, new byte[]{9, 9}), NOW.plusSeconds(60));
 
         var entry = cache.find(EAN).orElseThrow();
         assertArrayEquals(new byte[]{9, 9}, cache.readImage(EAN, entry.format()));
         assertEquals(NOW.plusSeconds(60), entry.fetchedAt());
-        try (Stream<Path> files = Files.list(cache.root().resolve(EAN.value()))) {
-            assertEquals(2, files.count(), "one entry and one image, no temporary files");
-        }
+        assertEquals(List.of("entry.properties", "image.jpg", "previa.jpg"), filesOf(EAN));
+        assertArrayEquals(new byte[]{1}, Files.readAllBytes(cache.root().resolve(EAN.value()).resolve("previa.jpg")));
+    }
+
+    @Test
+    void onlyTheLastReplacedPhotoIsKeptAsThePreviousOne() throws IOException {
+        cache.saveReady(EAN, candidate(ImageFormat.JPEG, new byte[]{1}), NOW);
+        cache.saveReady(EAN, candidate(ImageFormat.JPEG, new byte[]{2}), NOW);
+        cache.saveReady(EAN, candidate(ImageFormat.PNG, new byte[]{3}), NOW);
+
+        assertEquals(List.of("entry.properties", "image.png", "previa.jpg"), filesOf(EAN), "one previous slot, of whatever format");
+        assertArrayEquals(new byte[]{2}, Files.readAllBytes(cache.root().resolve(EAN.value()).resolve("previa.jpg")));
+    }
+
+    /** What lets a better cropper redo the crop: the store's file, before the crop, next to the delivered photo. */
+    @Test
+    void theOriginalBeforeTheCropIsKeptNextToTheDeliveredPhoto() throws IOException {
+        var cropped = new Candidate("carrefour", "https://page", "https://img", Kind.CROPPED, ImageFormat.JPEG, 900, 0.0, 200.0,
+                new byte[]{1, 1}, 0L, new byte[]{7, 7, 7});
+
+        cache.saveReady(EAN, cropped, NOW);
+
+        var entry = cache.find(EAN).orElseThrow();
+        assertTrue(entry.hasOriginal());
+        assertArrayEquals(new byte[]{7, 7, 7}, cache.readOriginal(EAN, entry.format()));
+        assertArrayEquals(new byte[]{1, 1}, cache.readImage(EAN, entry.format()));
+        assertEquals(List.of("entry.properties", "image.jpg", "original.jpg"), filesOf(EAN));
+    }
+
+    @Test
+    void aCleanPhotoHasNoSeparateOriginalBecauseItIsTheOriginal() throws IOException {
+        cache.saveReady(EAN, candidate(ImageFormat.JPEG, new byte[]{1}), NOW);
+
+        assertFalse(cache.find(EAN).orElseThrow().hasOriginal());
+    }
+
+    @Test
+    void anOriginalThatBelongedToAReplacedCropDoesNotStayBehind() throws IOException {
+        cache.saveReady(EAN, new Candidate("carrefour", "p", "i", Kind.CROPPED, ImageFormat.JPEG, 900, 0.0, 200.0,
+                new byte[]{1}, 0L, new byte[]{7}), NOW);
+
+        cache.saveReady(EAN, candidate(ImageFormat.PNG, new byte[]{5}), NOW);
+
+        assertFalse(cache.find(EAN).orElseThrow().hasOriginal());
+        assertFalse(Files.exists(cache.root().resolve(EAN.value()).resolve("original.jpg")));
+    }
+
+    @Test
+    void aPhotoPutInByHandIsMarkedAsSuchAndHasTheOwnStore() throws IOException {
+        cache.saveManual(EAN, new byte[]{4, 4}, ImageFormat.PNG, 1200, NOW);
+
+        var entry = cache.find(EAN).orElseThrow();
+        assertEquals(CacheEntry.Source.MANUAL, entry.source());
+        assertEquals(Candidate.OWN_STORE, entry.store());
+        assertEquals(Kind.ORIGINAL, entry.kind());
+        assertEquals(1200, entry.side());
+        assertArrayEquals(new byte[]{4, 4}, cache.readImage(EAN, ImageFormat.PNG));
+    }
+
+    @Test
+    void aPhotoFromAStoreIsMarkedAsFromAStore() throws IOException {
+        cache.saveReady(EAN, candidate(ImageFormat.JPEG, new byte[]{1}), NOW);
+
+        assertEquals(CacheEntry.Source.STORE, cache.find(EAN).orElseThrow().source());
+    }
+
+    /** Entries written before the bank had a source or an original still read fine. */
+    @Test
+    void anEntryWrittenByAnEarlierVersionIsStillReadAsFromAStoreWithoutAnOriginal() throws IOException {
+        Path folder = Files.createDirectories(cache.root().resolve(EAN.value()));
+        Files.write(folder.resolve("image.jpg"), new byte[]{1});
+        Files.writeString(folder.resolve("entry.properties"), String.join("\n", "status=READY", "fetchedAt=2026-11-06T15:00:00Z",
+                "store=carrefour", "kind=CROPPED", "format=JPEG", "side=1052", "edgeContact=0.0", "sharpness=210.5"));
+
+        var entry = cache.find(EAN).orElseThrow();
+
+        assertEquals(CacheEntry.Source.STORE, entry.source());
+        assertFalse(entry.hasOriginal());
+    }
+
+    @Test
+    void theEansInTheBankAreListedInOrderAndAnythingElseIsNot() throws IOException {
+        cache.saveReady(Ean.parse("7791337010710"), candidate(ImageFormat.JPEG, new byte[]{1}), NOW);
+        cache.saveReady(EAN, candidate(ImageFormat.JPEG, new byte[]{1}), NOW);
+        Files.createDirectories(cache.root().resolve(".git"));
+        Files.createDirectories(cache.root().resolve("no es un ean"));
+        Files.writeString(cache.root().resolve("indice.csv"), "x");
+
+        assertEquals(List.of(EAN, Ean.parse("7791337010710")), cache.eans());
+    }
+
+    @Test
+    void anEmptyAnswerOverAPhotoNeverLosesThePhoto() throws IOException {
+        cache.saveReady(EAN, candidate(ImageFormat.JPEG, new byte[]{1}), NOW);
+
+        cache.saveEmpty(EAN, Status.NOT_FOUND, "No store sells it", NOW);
+
+        assertEquals(Status.NOT_FOUND, cache.find(EAN).orElseThrow().status());
+        assertArrayEquals(new byte[]{1}, Files.readAllBytes(cache.root().resolve(EAN.value()).resolve("previa.jpg")));
     }
 
     @Test

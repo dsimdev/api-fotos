@@ -1,5 +1,6 @@
 package com.axum.fotos.tool;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -10,6 +11,7 @@ import com.axum.fotos.core.StoreException;
 import com.axum.fotos.core.StoreProduct;
 import com.axum.fotos.core.cache.CacheEntry;
 import com.axum.fotos.core.cache.LocalCache;
+import com.axum.fotos.core.image.ImageFormat;
 import com.axum.fotos.core.pick.Candidate;
 import com.axum.fotos.core.pick.Warning;
 import com.axum.fotos.stores.ImageDownloadException;
@@ -312,7 +314,7 @@ class PhotoFinderTest {
     }
 
     @Test
-    void refreshForgetsTheCacheAndAsksTheStoresAgain() throws IOException {
+    void aRefreshAsksTheStoresAgainEvenThoughTheBankHasTheEan() throws IOException {
         var jumbo = sells("jumbo", "u1");
         serves("u1", Pics.clean("u1"));
         var finder = finder(jumbo);
@@ -322,6 +324,129 @@ class PhotoFinderTest {
 
         assertFalse(again.fromCache());
         assertEquals(2, jumbo.calls.get());
+    }
+
+    // ---- the bank: a refresh never loses a photo, a person's photo is never refreshed, the original is kept ----
+
+    private byte[] storedPhoto() throws IOException {
+        return cache.readImage(EAN, cache.find(EAN).orElseThrow().format());
+    }
+
+    /** The bank has to outlive the stores: asking again and getting nothing must NOT cost the photo that is already there. */
+    @Test
+    void aRefreshWhileEveryStoreIsDownKeepsTheStoredPhoto() throws IOException {
+        serves("u1", Pics.clean("u1"));
+        finder(sells("jumbo", "u1")).find(EAN, false);
+        byte[] before = storedPhoto();
+
+        var lookup = finder(down("jumbo")).find(EAN, true);
+
+        assertEquals(Lookup.Status.FOUND, lookup.status());
+        assertTrue(lookup.detail().contains("Se conservó la foto guardada"), lookup.detail());
+        assertArrayEquals(before, lookup.chosen().bytes());
+        assertEquals(CacheEntry.Status.READY, cache.find(EAN).orElseThrow().status());
+        assertArrayEquals(before, storedPhoto());
+    }
+
+    @Test
+    void aRefreshWhenNoStoreSellsItAnymoreKeepsTheStoredPhoto() throws IOException {
+        serves("u1", Pics.clean("u1"));
+        finder(sells("jumbo", "u1")).find(EAN, false);
+
+        var lookup = finder(doesNotSell("jumbo"), doesNotSell("carrefour")).find(EAN, true);
+
+        assertEquals(Lookup.Status.FOUND, lookup.status());
+        assertTrue(lookup.detail().contains("Ninguna tienda la vende hoy") && lookup.detail().contains("Se conservó"), lookup.detail());
+        assertEquals(CacheEntry.Status.READY, cache.find(EAN).orElseThrow().status(), "the photo is not replaced by 'not found'");
+    }
+
+    @Test
+    void aRefreshWhenTheStoresOnlyHaveUnusablePhotosKeepsTheStoredPhoto() throws IOException {
+        serves("u1", Pics.clean("u1"));
+        finder(sells("jumbo", "u1")).find(EAN, false);
+        serves("u2", Pics.onlyPanel("u2"));
+
+        var lookup = finder(sells("jumbo", "u2")).find(EAN, true);
+
+        assertEquals(Lookup.Status.FOUND, lookup.status());
+        assertTrue(lookup.detail().contains("Se conservó"), lookup.detail());
+        assertEquals(CacheEntry.Status.READY, cache.find(EAN).orElseThrow().status());
+    }
+
+    @Test
+    void aRefreshThatFindsAnotherPhotoReplacesItAndKeepsTheOldOneAsThePreviousOne() throws IOException {
+        serves("u1", Pics.clean("u1"));
+        finder(sells("jumbo", "u1")).find(EAN, false);
+        byte[] old = storedPhoto();
+        serves("u2", Pics.withPanel("u2"));
+
+        var lookup = finder(sells("carrefour", "u2")).find(EAN, true);
+
+        assertEquals(Lookup.Status.FOUND, lookup.status());
+        assertFalse(lookup.fromCache(), "this one is new");
+        assertEquals("carrefour", cache.find(EAN).orElseThrow().store());
+        assertFalse(java.util.Arrays.equals(old, storedPhoto()));
+        assertArrayEquals(old, java.nio.file.Files.readAllBytes(dir.resolve("cache").resolve(EAN.value()).resolve("previa.jpg")));
+    }
+
+    @Test
+    void aRefreshOfAnEanThatHadNoPhotoCanFindOne() throws IOException {
+        finder(doesNotSell("jumbo")).find(EAN, false);
+        assertEquals(CacheEntry.Status.NOT_FOUND, cache.find(EAN).orElseThrow().status());
+        serves("u1", Pics.clean("u1"));
+
+        var lookup = finder(sells("jumbo", "u1")).find(EAN, true);
+
+        assertEquals(Lookup.Status.FOUND, lookup.status());
+        assertEquals(CacheEntry.Status.READY, cache.find(EAN).orElseThrow().status());
+    }
+
+    @Test
+    void aPhotoAPersonPutInIsUsedAsItIsAndNeverRefreshedNorAskedAboutAtAll() throws IOException {
+        cache.saveManual(EAN, Pics.clean("mine").bytes(), ImageFormat.JPEG, 1000, Instant.parse("2026-11-06T15:00:00Z"));
+        var jumbo = sells("jumbo", "u1");
+        serves("u1", Pics.withPanel("u1"));
+
+        var plain = finder(jumbo).find(EAN, false);
+        var refreshed = finder(jumbo).find(EAN, true);
+
+        assertTrue(plain.chosen().own() && refreshed.chosen().own());
+        assertEquals("propia", refreshed.chosen().store());
+        assertEquals(0, jumbo.calls.get(), "not even a refresh asks a store about a photo a person chose");
+        assertEquals(CacheEntry.Source.MANUAL, cache.find(EAN).orElseThrow().source());
+    }
+
+    @Test
+    void aPhotoAPersonPutInOnlyWarnsAboutItsSize() throws IOException {
+        cache.saveManual(EAN, Pics.clean("mine").bytes(), ImageFormat.JPEG, 300, Instant.parse("2026-11-06T15:00:00Z"));
+
+        var lookup = finder(doesNotSell("jumbo")).find(EAN, false);
+
+        assertEquals(List.of(Warning.LOW_RESOLUTION), lookup.warnings(), "no 'touches the edge' or 'soft' about a photo you chose");
+    }
+
+    /** What lets a better cropper redo the crop later: the store's file before the crop is saved next to the cropped one. */
+    @Test
+    void whenThePanelIsCutTheStoresFileBeforeTheCropIsSavedInTheBank() throws IOException {
+        var downloaded = Pics.withPanel("u1");
+        serves("u1", downloaded);
+
+        var lookup = finder(sells("jumbo", "u1")).find(EAN, false);
+
+        var entry = cache.find(EAN).orElseThrow();
+        assertEquals(Candidate.Kind.CROPPED, lookup.chosen().kind());
+        assertTrue(entry.hasOriginal());
+        assertArrayEquals(downloaded.bytes(), cache.readOriginal(EAN, entry.format()), "exactly the bytes the store served");
+        assertFalse(java.util.Arrays.equals(downloaded.bytes(), storedPhoto()), "and the delivered one is the cropped one");
+    }
+
+    @Test
+    void aCleanPhotoIsNotSavedTwiceBecauseItIsItsOwnOriginal() throws IOException {
+        serves("u1", Pics.clean("u1"));
+
+        finder(sells("jumbo", "u1")).find(EAN, false);
+
+        assertFalse(cache.find(EAN).orElseThrow().hasOriginal());
     }
 
     @Test

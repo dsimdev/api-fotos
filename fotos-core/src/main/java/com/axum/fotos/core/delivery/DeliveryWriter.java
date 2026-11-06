@@ -3,6 +3,7 @@ package com.axum.fotos.core.delivery;
 import com.axum.fotos.core.delivery.DeliveryLine.Result;
 import com.axum.fotos.core.pick.Candidate;
 import com.axum.fotos.core.pick.Warning;
+import com.axum.fotos.core.sheet.CsvCell;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -136,24 +137,17 @@ public final class DeliveryWriter {
         for (DeliveryLine l : lines) {
             String warnings = l.warnings().stream().map(DeliveryWriter::warningText).collect(Collectors.joining(" "));
             sb.append(l.row()).append(',')
-                    .append(csv(l.sku(), false)).append(',')
-                    .append(csv(l.ean(), false)).append(',')
-                    .append(csv(l.description(), true)).append(',')
+                    .append(CsvCell.of(l.sku(), false)).append(',')
+                    .append(CsvCell.of(l.ean(), false)).append(',')
+                    .append(CsvCell.of(l.description(), true)).append(',')
                     .append(l.stateName()).append(',')
-                    .append(csv(l.store(), true)).append(',')
+                    .append(CsvCell.of(l.store(), true)).append(',')
                     .append(l.kind() == null ? "" : l.kind() == Candidate.Kind.ORIGINAL ? "original" : "recortada").append(',')
                     .append(l.side() == 0 ? "" : Integer.toString(l.side())).append(',')
-                    .append(csv(warnings, true)).append(',')
-                    .append(csv(l.detail(), true)).append("\r\n");
+                    .append(CsvCell.of(warnings, true)).append(',')
+                    .append(CsvCell.of(l.detail(), true)).append("\r\n");
         }
         return sb.toString();
-    }
-
-    private static String csv(String value, boolean freeText) {
-        String v = value == null ? "" : value.trim();
-        // A cell that starts with these is a formula to a spreadsheet program: a leading quote makes it text.
-        if (freeText && !v.isEmpty() && "=+-@\t\r".indexOf(v.charAt(0)) >= 0) v = "'" + v;
-        return '"' + v.replace("\"", "\"\"") + '"';
     }
 
     private static String gallery(List<DeliveryLine> lines) {
