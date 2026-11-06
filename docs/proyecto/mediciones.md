@@ -235,7 +235,12 @@ segundo. La medición se detiene sola si una tienda contesta 401, 403 o 429, y n
 vainilla y frutilla) y el quinto es un Casancrem Sachetón de 4 kg (formato institucional). Tiene sentido: la marca
 propia de una cadena solo la vende esa cadena.
 
-**Calidad de la imagen (posición 0 de cada tienda):**
+> **Corrección (2026-11-06): las cifras de calidad de esta fase son inválidas.** Salieron de la primera versión del
+> recortador, que dejó el panel puesto en 8 de las fotos entregadas y recortó de más el producto en unas 40. La
+> frase "12 de 12 recortes bien, revisado a ojo" venía de una muestra chica propia que no vio el fallo. Lo que vale
+> es la fase A5, más abajo. La cobertura (los 125 de 130 encontrados) y las consultas **sí** son válidas.
+
+**Calidad de la imagen (posición 0 de cada tienda), con la primera versión del recortador (superada por la A5):**
 
 | | |
 |---|---|
@@ -247,16 +252,16 @@ propia de una cadena solo la vende esa cadena.
 | Sin recorte posible | Casancrem Sachetón 2 kg, y LS Sachet Entero 1300 g vainilla y frutilla (el panel toca al envase) |
 
 - **En esta marca la plantilla con banner es casi universal:** el recorte no es un extra, es el camino principal.
-- **Revisado a ojo por Claude (sin independencia): 12 de 12 recortes bien** (uno por familia, incluido el panel
-  inferior del Flan Ser) y **12 de 12 "limpias" realmente limpias** (una por familia). Son muestras chicas.
+- ~~Revisado a ojo por Claude (sin independencia): 12 de 12 recortes bien~~ **Incorrecto**: la muestra no incluía
+  ninguno de los 8 casos con el panel puesto. Ver la fase A5.
 - **WebP:** solo **Josimar** ignora el `Accept` y sirve WebP (79 de 791 imágenes); las otras seis sirven JPG.
   Ningún EAN depende únicamente de una imagen WebP.
 - Limitaciones: una sola marca, productos refrigerados, y el recorte quedó validado a ojo en una muestra.
 
 **Prototipo de la entrega** (`spikes/measure-sources/make-gallery.mjs`, salida en `out/danone/`, ignorada por git):
-una carpeta `entrega/` con **122 fotos JPEG nombradas con el SKU** (24,5 MB), un `reporte.csv` con el estado de
-cada producto y una `galeria.html` para mirarlas de corrido. La regla para elegir la foto es la del contrato
-(sección 4): una original limpia gana a una recortada, después al menos 500 px, después la más grande.
+una carpeta `entrega/` con fotos JPEG nombradas con el SKU, un `reporte.csv` con el estado de cada producto y una
+`galeria.html` para mirarlas de corrido. Es el antecedente de la herramienta real (fase A5); su recortador tenía el
+defecto de arriba.
 
 ### Cómo repetirlo
 
@@ -267,4 +272,90 @@ OUT_NAME=danone CONCURRENCY=6 PAUSE_MS=200 node download-store-images.mjs
 node detect-banner.mjs out/danone/images-by-store
 node crop-banner.mjs out/danone/images-by-store out/danone/banner-detect.json out/danone/cropped
 OUT_NAME=danone node make-gallery.mjs
+```
+
+## Fase A5 — del prototipo a la herramienta: lo que falló y lo que se midió después (2026-11-06)
+
+Esta fase **reemplaza las cifras de calidad de la A4**. Se hizo en tres vueltas: una revisión independiente del
+prototipo encontró un defecto serio, se corrigió y se portó a Java comparando contra lo medido, y una segunda revisión
+independiente de la entrega de la herramienta real cerró el ciclo.
+
+### 1. El defecto del recortador (revisión independiente de la entrega del prototipo)
+
+Un agente que no vio mis conclusiones revisó las 122 fotos del prototipo con criterios explícitos. Encontró **8 con
+el panel de nombre y peso todavía puesto** y el producto recortado de más en unas 40. **Causa:** el recortador tomaba
+"el bloque más grande" como el producto, pero un envase blanco sobre fondo blanco se parte en varios pedazos y el
+panel, sólido, quedaba como el bloque más grande: lo conservaba a él y descartaba el producto. La versión 2 busca el
+panel por **lo que es** (una franja sólida, gruesa, con todo el resto del contenido de un solo lado) y **verifica la
+salida**: si queda un panel, la imagen se informa y no se entrega. Los 8 casos quedaron bien y los 5 que pasaron de
+"recortada" a "sin panel separado" tienen la misma foto en otras tiendas.
+
+### 2. El port a Java contra lo medido
+
+Se corrió el detector y el recortador de Java sobre las **791 imágenes** de la A4 y se compararon con los resultados del
+prototipo: **711 de 712 clasificaciones iguales** y **670 de 671 resultados de recorte iguales** (las 79 que no se
+comparan son WebP, que el JDK no lee y solo sirve Josimar). Las cajas del producto difieren unos píxeles de borde en 23
+casos (hasta 30 px sobre 1000); en tres revisadas a ojo, la caja de Java abraza al envase y no corta nada, y se le
+agregó una celda de holgura para no afeitar el borde pálido de un envase blanco.
+
+### 3. Lo que la revisión pidió y cómo se resolvió
+
+La revisión de la entrega del prototipo (v2 del recortador, 124 fotos) dejó **5 fotos que no se debían entregar y 15
+leves**: tres con el envase cortado por la fuente (610021, 610055, 939841), una miniatura agrandada a 2000 px (640017) y
+un envase de otro diseño (964107). Todas eran el **original de una tienda** que la regla "el original le gana al
+recortado" había preferido. Medido sobre el catálogo:
+
+- **Borde:** el contacto del producto con el borde de la foto va de 0 a 0,42. Los 3 cortes reales dan 0,33 a 0,42, pero
+  tres cartones de base plana que el revisor vio completos dan 0,40 a 0,42: **una foto rebanada y un envase completo
+  pero justo de marco se miden igual**. Por eso el borde (umbral 0,25) solo manda la foto al fondo, no la descarta.
+- **Nitidez:** 640017 da 6 y la siguiente más baja 30 (umbral 15). Pero **no es comparable entre tiendas**: una imagen
+  de 2000 px, achicada para medir, da menos que la de 1000 px de la misma foto. Comparar "la más nítida" cambiaba 28
+  fotos por versiones más chicas sin ganancia real, así que no se hace.
+- **Mayoría entre tiendas:** la huella visual del producto separa bien "misma foto" (0 a 6 bits de 64, aun con otro
+  tamaño o recorte) de "otra foto" (17 a 31). Cuando las tiendas muestran fotos distintas, gana la que más repiten
+  (Jumbo, Disco y Vea sirven el mismo archivo y cuentan como un voto; todas votan, pero solo puede ser elegida la que no
+  toca el borde ni está borrosa). **Cambia 22 de las 124 elecciones**, entre ellas los casos marcados (los dos Silk, el
+  Casancrem que mostraba otra variante y los siete originales de Cordiez con mucho aire). Lo que reemplaza es casi
+  siempre el diseño actual del envase frente a uno viejo de Cordiez (el Danonino de Peppa, el Yogurísimo de 14 g).
+
+### 4. La corrida real de la herramienta (planilla de 130 productos)
+
+| | |
+|---|---|
+| Tiempo (primera vez, sin caché, 7 tiendas) | 238 s |
+| Filas con foto | **124 de 130 (95%)**: 111 recortadas y 13 originales |
+| Sin foto | 6: 5 que ninguna tienda vende (4 de marca propia de La Anónima y el Casancrem de 4 kg) y el Casancrem Sachetón de 2 kg, cuya foto trae el panel y no se pudo recortar |
+| Tamaño de las fotos | mínimo 784 px, mediana 1643 px, ninguna bajo 500 px |
+| Tienda de origen | Carrefour 88, Jumbo 15, Masonline 12, Cordiez 6, Josimar 3 |
+| Con aviso en el reporte | 3 (640010, 958510, 966512: fotos blandas) |
+| Elecciones distintas de la entrega revisada antes | 39 de 124 |
+
+### 5. Revisión independiente de la entrega final (124 fotos)
+
+Otro agente, sin saber qué había cambiado, revisó las 124: hojas de contacto, 14 hojas propias con cada producto
+ampliado, franjas de los bordes y unas 25 fotos a tamaño completo, más medidas por script de márgenes y fondo.
+
+- **Panel: 0. Marca ajena: 0. Producto cortado: 0. Packs que no corresponden: 0.** Fondos blancos puros.
+- **1 "bloquea" y 12 leves; 111 limpias.** Los "bloquea" y los dudosos por producto (610036, 610043 a 610045) se
+  resolvieron mirando lo que cada tienda dice del EAN: **las tiendas coinciden entre sí y con la foto**; la diferencia
+  está en la descripción de la planilla (peso 162 g contra 166 g en el mismo producto; "+FORTI ENT" es un nombre interno).
+  No son defectos de la foto. Queda por confirmar con el cliente si esa descripción es la que quiere.
+- Los leves restantes son fotos chicas dentro del lienzo y de baja resolución (138701, 610027, 656001, 656002), un vaso
+  con poco margen (610022) y las blandas avisadas (640010, 966512, 958510, 610055).
+- Las promociones impresas en el envase ("pack ahorro", "4x3", "edición limitada") son parte del envase y no se
+  recortan; si la tienda no tiene esa promoción vigente, pueden confundir.
+
+### Límites de esta medición
+
+- Los revisores son **agentes, no una persona**: no abrieron cada foto a tamaño completo. Para marcas ajenas, la galería
+  sigue siendo la revisión que importa antes de entregar.
+- Una sola marca, productos refrigerados, un solo cliente: los umbrales de borde y borrosa salen de acá.
+- Que las tiendas coincidan entre sí **no verifica** que la foto sea el producto real del EAN; es lo más probable.
+- No se midió la caché con un segundo cliente ni la corrida con una tienda bloqueando.
+
+### Cómo repetirlo
+
+```
+./gradlew :fotos-tool:installDist
+fotos-tool/build/install/fotos-tool/bin/fotos-tool.bat "eans danone.xlsx" --refresh --no-abrir
 ```
