@@ -8,10 +8,13 @@ supermercados argentinos (VTEX), consultados por código de barras.
 
 ## Cómo se usa
 
-1. Una vez, instalarla: `scripts/herramienta/instalar.ps1` (necesita Java 21). Crea el acceso directo **Fotos por SKU**
-   en el escritorio. Se puede correr de nuevo para actualizar.
-2. Cada vez que un cliente manda su lista: **arrastrar la planilla (.xlsx o .csv) sobre el acceso directo.**
-3. Al terminar se abre la carpeta `<planilla> - fotos`, junto a la planilla:
+1. Una vez, instalarla: `scripts/herramienta/instalar.ps1` (necesita Java 21). La deja en `C:DevFotos Tienda`; no crea
+   accesos directos, esos los arma cada persona. Se puede correr de nuevo para actualizar: reemplaza solo el programa y
+   no toca las entregas.
+2. Cada vez que un cliente manda su lista: **arrastrar la planilla (.xlsx o .csv) sobre `Arrastrar la planilla aca.bat`**
+   (o sobre un acceso directo a ese archivo).
+3. Al terminar se abre la carpeta `Fotos <fecha>` (por ejemplo `Fotos 2026-11-06`), **dentro de la carpeta del programa**
+   y no donde estaba la planilla. Si se corre dos veces el mismo día, la segunda es `Fotos 2026-11-06 (2)`:
    - `fotos\` una foto por SKU (`<SKU>.jpg` o `<SKU>.png`),
    - `fotos.zip` las mismas fotos, listas para pasarle a la tienda,
    - `reporte.csv` una línea por producto: estado, tienda de origen y avisos,
@@ -19,7 +22,7 @@ supermercados argentinos (VTEX), consultados por código de barras.
 
 Cambiar una foto es reemplazar el archivo en `fotos\` (y volver a armar el zip). Si el reporte dice `ERROR`, volver a
 correr la misma planilla: lo ya bajado queda guardado y solo se piden esos. Por consola:
-`fotos-tool <planilla> [--refresh] [--cache <carpeta>] [--no-abrir]`.
+`fotos-tool <planilla> [--refresh] [--cache <carpeta>] [--salida <carpeta>] [--no-abrir]`.
 
 ## Qué hay en el repositorio
 

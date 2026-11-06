@@ -1,24 +1,23 @@
 ﻿<#
 .SYNOPSIS
-  Instala la herramienta de fotos en esta PC y crea el acceso directo para arrastrar la planilla.
+  Instala la herramienta de fotos en C:\Dev\Fotos Tienda.
 
 .DESCRIPTION
-  Compila (gradlew installDist), copia el programa a una carpeta fija y crea el acceso directo en el escritorio.
-  Se puede correr de nuevo para actualizar: reemplaza el programa, NO toca la caché de fotos (vive aparte, en
-  %LOCALAPPDATA%\api-fotos\cache) ni las carpetas de entrega ya generadas.
+  Compila (gradlew installDist) y copia el programa a la carpeta de instalación. Los accesos directos los crea
+  cada persona a mano: este script no toca el escritorio.
+
+  Las entregas ("Fotos <fecha>") se crean DENTRO de esta misma carpeta, así que al actualizar se reemplaza solo el
+  programa (bin, lib y el lanzador) y nada más: las entregas ya generadas no se tocan. La caché de fotos vive aparte,
+  en %LOCALAPPDATA%\api-fotos\cache.
 
 .PARAMETER Carpeta
-  Donde queda instalado el programa. Por defecto %LOCALAPPDATA%\api-fotos\herramienta.
-
-.PARAMETER Acceso
-  Ruta del acceso directo (.lnk). Por defecto, "Fotos por SKU" en el escritorio.
+  Donde queda instalado el programa y donde se crean las entregas. Por defecto C:\Dev\Fotos Tienda.
 
 .PARAMETER SinCompilar
   Usa lo ya compilado en fotos-tool\build\install en vez de volver a compilar.
 #>
 param(
-    [string]$Carpeta = (Join-Path $env:LOCALAPPDATA 'api-fotos\herramienta'),
-    [string]$Acceso = (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Fotos por SKU.lnk'),
+    [string]$Carpeta = 'C:\Dev\Fotos Tienda',
     [switch]$SinCompilar
 )
 
@@ -42,23 +41,23 @@ if (-not (Test-Path (Join-Path $origen $lanzador))) {
 }
 
 if (Test-Path $Carpeta) {
-    # Solo se reemplaza una instalación anterior de ESTA herramienta: una carpeta cualquiera no se borra.
-    if (-not (Test-Path (Join-Path $Carpeta $lanzador))) {
-        throw "La carpeta $Carpeta existe y no parece una instalación de la herramienta. No la toco: elegí otra con -Carpeta."
+    # Una carpeta que ya existe tiene que estar vacía o ser una instalación anterior de ESTA herramienta: una
+    # carpeta cualquiera no se toca.
+    $hayAlgo = $null -ne (Get-ChildItem -LiteralPath $Carpeta -Force | Select-Object -First 1)
+    if ($hayAlgo -and -not (Test-Path (Join-Path $Carpeta $lanzador))) {
+        throw "La carpeta $Carpeta existe, no está vacía y no parece una instalación de la herramienta. No la toco: elegí otra con -Carpeta."
     }
-    Remove-Item $Carpeta -Recurse -Force
+} else {
+    New-Item -ItemType Directory -Path $Carpeta -Force | Out-Null
 }
-New-Item -ItemType Directory -Path (Split-Path $Carpeta -Parent) -Force | Out-Null
-Copy-Item $origen $Carpeta -Recurse
 
-$shell = New-Object -ComObject WScript.Shell
-$link = $shell.CreateShortcut($Acceso)
-$link.TargetPath = Join-Path $Carpeta $lanzador
-$link.WorkingDirectory = $Carpeta
-$link.Description = 'Arrastrá la planilla (.xlsx o .csv con SKU y EAN) sobre este acceso directo'
-$link.IconLocation = "$env:SystemRoot\System32\imageres.dll,67"
-$link.Save()
+# Se reemplaza SOLO lo que es del programa. Todo lo demás de la carpeta (las entregas) queda como está.
+foreach ($parte in @('bin', 'lib', $lanzador)) {
+    $destino = Join-Path $Carpeta $parte
+    if (Test-Path -LiteralPath $destino) { Remove-Item -LiteralPath $destino -Recurse -Force }
+    Copy-Item -LiteralPath (Join-Path $origen $parte) -Destination $destino -Recurse
+}
 
 Write-Host "Instalado en: $Carpeta"
-Write-Host "Acceso directo: $Acceso"
-Write-Host 'Para usarlo, arrastrá la planilla sobre el acceso directo.'
+Write-Host "Las entregas se crean ahí dentro, en carpetas 'Fotos <fecha>'."
+Write-Host "Para usarlo, arrastrá la planilla sobre '$lanzador' (o creá un acceso directo a ese archivo)."

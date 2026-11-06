@@ -88,17 +88,20 @@ destino cuando la herramienta ande.
 
 ### Cómo se usa
 
-1. Una vez: `scripts/herramienta/instalar.ps1` (compila, copia el programa a `%LOCALAPPDATA%\api-fotos\herramienta` y
-   crea el acceso directo **Fotos por SKU** en el escritorio). Se puede correr de nuevo para actualizar.
-2. Cada vez que un cliente manda su lista: **arrastrar la planilla (.xlsx o .csv, con columnas SKU y EAN) sobre el
-   acceso directo.** Se abre una ventana con el avance fila por fila.
-3. Al terminar se abre la carpeta `<planilla> - fotos`, junto a la planilla:
+1. Una vez: `scripts/herramienta/instalar.ps1` (compila y copia el programa a **`C:\Dev\Fotos Tienda`**). No crea accesos
+   directos: los arma cada persona. Se puede correr de nuevo para actualizar; reemplaza solo `bin`, `lib` y el lanzador,
+   así que **nunca toca las entregas**, que viven en esa misma carpeta.
+2. Cada vez que un cliente manda su lista: **arrastrar la planilla (.xlsx o .csv, con columnas SKU y EAN) sobre
+   `Arrastrar la planilla aca.bat`** (o un acceso directo a él). Se abre una ventana con el avance fila por fila.
+3. Al terminar se abre la carpeta `Fotos <fecha>` (por ejemplo `Fotos 2026-11-06`), **dentro de la carpeta del programa**
+   y no junto a la planilla, que suele venir de Descargas. El mismo día, la segunda es `Fotos 2026-11-06 (2)` y así:
+   nunca se reutiliza ni se pisa una.
    - `fotos\` una foto por SKU, `<SKU>.jpg` o `<SKU>.png` según lo que la foto realmente es (no se convierte);
    - `fotos.zip` las mismas fotos, listas para pasarle a la tienda;
    - `reporte.csv` una línea por fila de la planilla: estado, tienda de donde salió, tamaño y **avisos**;
    - `galeria.html` lo mismo para mirar, con los avisos marcados.
 4. Cambiar una foto es **reemplazar el archivo** en `fotos\` (y volver a armar el zip). Correr de nuevo la misma
-   planilla no pisa nada: arma `... - fotos (2)`.
+   planilla no pisa nada: arma otra carpeta con `(2)`.
 
 Estados del reporte: `OK` (original de la tienda, sin tocar), `OK_RECORTADA` (se le quitó el panel de plantilla),
 `SIN_IMAGEN` (ninguna tienda lo vende, o ninguna tiene una foto utilizable: el detalle lo dice), `ERROR` (una tienda
@@ -106,7 +109,7 @@ no respondió: **volver a correr la misma planilla**, solo se piden esas), `DATO
 SKU que no sirve de nombre de archivo, SKU repetido con otro EAN).
 
 Opciones por consola: `--refresh` (vuelve a consultar las tiendas por los EAN de esa planilla), `--cache <carpeta>`,
-`--no-abrir`. La caché está en `%LOCALAPPDATA%\api-fotos\cache` (o en `FOTOS_CACHE`) y **sobrevive entre planillas**:
+`--salida <carpeta>` (dónde crear `Fotos <fecha>`, en vez de la carpeta del programa), `--no-abrir`. La caché está en `%LOCALAPPDATA%\api-fotos\cache` (o en `FOTOS_CACHE`) y **sobrevive entre planillas**:
 el mismo producto en la lista de otro cliente no se vuelve a pedir.
 
 ### Cómo decide

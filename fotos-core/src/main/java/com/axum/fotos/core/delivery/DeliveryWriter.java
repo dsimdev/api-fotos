@@ -31,7 +31,7 @@ import java.util.zip.ZipOutputStream;
  * </pre>
  *
  * <p>Changing a photo is replacing its file in {@code fotos/}; the zip is then stale and has to be made again.
- * A folder that already exists is never reused (see {@link #newFolderNextTo}): a rerun must not overwrite photos
+ * A folder that already exists is never reused (see {@link #newFolder}): a rerun must not overwrite photos
  * that someone already swapped by hand.
  *
  * <p>The report and the gallery are for the person, so their text is Spanish. Free text that came from the client's
@@ -44,14 +44,14 @@ public final class DeliveryWriter {
 
     private DeliveryWriter() {}
 
-    /** Creates {@code "<sheet name> - fotos"} next to the sheet, or {@code "... (2)"} and so on if it already exists. */
-    public static Path newFolderNextTo(Path spreadsheet) throws IOException {
-        String file = spreadsheet.getFileName().toString();
-        int dot = file.lastIndexOf('.');
-        String base = (dot > 0 ? file.substring(0, dot) : file) + " - fotos";
-        Path parent = spreadsheet.toAbsolutePath().getParent();
+    /**
+     * Creates {@code root/name}, or {@code root/name (2)} and so on if it already exists, and the root itself if it
+     * is missing. The name is chosen by the caller (the tool uses "Fotos &lt;date&gt;"), never taken from the client's sheet.
+     */
+    public static Path newFolder(Path root, String name) throws IOException {
+        Files.createDirectories(root);
         for (int n = 1; ; n++) {
-            Path candidate = parent.resolve(n == 1 ? base : base + " (" + n + ")");
+            Path candidate = root.resolve(n == 1 ? name : name + " (" + n + ")");
             try {
                 return Files.createDirectory(candidate);
             } catch (FileAlreadyExistsException taken) {

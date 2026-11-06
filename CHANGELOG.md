@@ -6,6 +6,19 @@ and whoever runs the next 360 audit. Write **why**, not just what.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning:
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- The delivery folder is now `Fotos <date>` (e.g. `Fotos 2026-11-06`) created INSIDE the folder the program is installed
+  in, no longer next to the dropped sheet: the sheet usually comes from Downloads and that is not where deliveries should
+  pile up. A new `--salida <folder>` option puts it elsewhere; run from a build rather than an install it still writes
+  next to the sheet. A second run the same day is `Fotos <date> (2)`, never a reuse. `DeliveryWriter.newFolderNextTo`
+  became `newFolder(root, name)`; the name is chosen by the caller, not taken from the client sheet. Locked in by
+  `MainTest` and `DeliveryWriterTest.theDeliveryFolderIsNeverReused`.
+- `scripts/herramienta/instalar.ps1` installs to `C:DevFotos Tienda` and no longer creates a desktop shortcut (each person
+  makes theirs). Because deliveries now live in the install folder, an update replaces only `bin`, `lib` and the launcher
+  and never wipes the folder; it still refuses a non-empty folder that is not a previous install.
+
 ## [0.2.0] - 2026-11-06
 
 The project moved from a hosted service to a local drag-and-drop tool (decided 2026-11-06, see

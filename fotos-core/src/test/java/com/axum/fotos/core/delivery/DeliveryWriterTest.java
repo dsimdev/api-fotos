@@ -147,15 +147,26 @@ class DeliveryWriterTest {
 
     @Test
     void theDeliveryFolderIsNeverReused() throws IOException {
-        Path sheet = dir.resolve("eans danone.xlsx");
-        Files.writeString(sheet, "x");
+        Path root = dir.resolve("Fotos Tienda");
 
-        var first = DeliveryWriter.newFolderNextTo(sheet);
-        var second = DeliveryWriter.newFolderNextTo(sheet);
+        var first = DeliveryWriter.newFolder(root, "Fotos 2026-11-06");
+        var second = DeliveryWriter.newFolder(root, "Fotos 2026-11-06");
+        var third = DeliveryWriter.newFolder(root, "Fotos 2026-11-06");
 
-        assertEquals("eans danone - fotos", first.getFileName().toString());
-        assertEquals("eans danone - fotos (2)", second.getFileName().toString());
-        assertTrue(Files.isDirectory(first) && Files.isDirectory(second));
+        assertEquals("Fotos 2026-11-06", first.getFileName().toString());
+        assertEquals("Fotos 2026-11-06 (2)", second.getFileName().toString());
+        assertEquals("Fotos 2026-11-06 (3)", third.getFileName().toString());
+        assertTrue(Files.isDirectory(first) && Files.isDirectory(second) && Files.isDirectory(third));
+    }
+
+    @Test
+    void theRootIsCreatedWhenItDoesNotExistYet() throws IOException {
+        Path root = dir.resolve("no").resolve("existe").resolve("todavia");
+
+        var folder = DeliveryWriter.newFolder(root, "Fotos 2026-11-06");
+
+        assertEquals(root, folder.getParent());
+        assertTrue(Files.isDirectory(folder));
     }
 
     @Test

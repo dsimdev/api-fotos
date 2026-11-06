@@ -6,9 +6,9 @@ lo consume el backend de la tienda, que recorre todos sus códigos, y una person
 o cambia cada imagen en el sistema de la tienda. Es una API con un panel de administración embebido.
 
 > **DECIDIDO (2026-11-06): esto es una herramienta local, no un servicio.** Corre en la máquina del usuario
-> cuando un cliente le pide fotos: el cliente pasa una planilla con SKU y EAN, el usuario la **arrastra sobre un
-> acceso directo**, y la herramienta arma una carpeta con una foto por producto **nombrada con el SKU**, un ZIP,
-> un reporte y una galería, que el usuario le entrega a la tienda para que la suba. Lo medido sigue valiendo.
+> cuando un cliente le pide fotos: el cliente pasa una planilla con SKU y EAN, el usuario la **arrastra sobre el
+> lanzador** (instalado en `C:\Dev\Fotos Tienda`), y la herramienta arma, dentro de esa carpeta, una `Fotos <fecha>`
+> con una foto por producto **nombrada con el SKU**, un ZIP, un reporte y una galería, que el usuario le entrega a la tienda para que la suba. Lo medido sigue valiendo.
 > Lo que depende de hospedar un servicio (API con clave por cliente, SQL Server, login, deploy, alertas,
 > `LOADING`) queda **en suspenso: no construirlo** salvo que el usuario vuelva a pedirlo. Qué se construyó, cómo
 > se usa y qué límites tiene: `docs/proyecto/modelo-local.md`. **Las secciones de abajo que hablan de la API, la

@@ -11,7 +11,10 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -22,8 +25,12 @@ import java.util.function.Consumer;
  * with one photo per SKU. Everything it prints is for that person, so it is in Spanish.
  *
  * <pre>
- *   fotos-tool &lt;planilla&gt; [--refresh] [--cache &lt;carpeta&gt;] [--no-abrir]
+ *   fotos-tool &lt;planilla&gt; [--refresh] [--cache &lt;carpeta&gt;] [--salida &lt;carpeta&gt;] [--no-abrir]
  * </pre>
+ *
+ * <p>Each run writes a new folder {@code Fotos <date>} INSIDE the folder the program is installed in (the sheet is
+ * usually dropped from Downloads, and that is not where the deliveries should pile up). {@code --salida} puts them
+ * elsewhere. Run from a build and not from an install, with no {@code --salida}, it writes next to the sheet.
  *
  * <p>The cache lives outside the delivery folder so that the next list reuses every photo already found.
  * {@code --refresh} forgets what is known about the EANs of THIS list and asks the stores again.
@@ -41,13 +48,20 @@ public final class Main {
     public static void main(String[] args) {
         String version = Main.class.getPackage().getImplementationVersion();
         String v = version == null ? "dev" : version;
-        int code = run(args, System.out, (cache, pool) -> ToolWiring.finder(v, cache, pool), Main::openFolder);
+        int code = run(args, System.out, (cache, pool) -> ToolWiring.finder(v, cache, pool), Main::openFolder,
+                installDir(), Clock.system(ZoneId.of("America/Argentina/Buenos_Aires")));
         System.exit(code);
     }
 
-    static int run(String[] args, PrintStream out, FinderFactory factory, Consumer<Path> opener) {
+    /**
+     * @param installDir the folder the program is installed in, where the deliveries go by default; null when the tool
+     *                   is not running from an install
+     * @param clock      gives the date in the name of the delivery folder
+     */
+    static int run(String[] args, PrintStream out, FinderFactory factory, Consumer<Path> opener, Path installDir, Clock clock) {
         Path sheet = null;
         Path cacheDir = null;
+        Path outputRoot = null;
         boolean refresh = false, open = true;
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -56,6 +70,10 @@ public final class Main {
                 case "--cache" -> {
                     if (i + 1 >= args.length) return fail(out, "Falta la carpeta después de --cache.");
                     cacheDir = Path.of(args[++i]);
+                }
+                case "--salida" -> {
+                    if (i + 1 >= args.length) return fail(out, "Falta la carpeta después de --salida.");
+                    outputRoot = Path.of(args[++i]);
                 }
                 case "--help", "-h", "ayuda" -> {
                     usage(out);
@@ -85,11 +103,13 @@ public final class Main {
         if (rows.isEmpty()) return fail(out, "La planilla no tiene filas con SKU y EAN.");
 
         if (cacheDir == null) cacheDir = defaultCacheDir();
+        if (outputRoot == null) outputRoot = installDir != null ? installDir : sheet.toAbsolutePath().getParent();
         ExecutorService pool = Executors.newFixedThreadPool(8);
         try {
             long started = System.nanoTime();
             out.println("Planilla: " + sheet.getFileName() + " (" + rows.size() + " productos)");
             out.println("Caché de fotos: " + cacheDir);
+            out.println("Las entregas se guardan en: " + outputRoot);
             out.println(refresh ? "Se vuelve a consultar todo (--refresh)." : "Lo que ya se bajó antes sale de la caché.");
             out.println();
 
@@ -97,7 +117,7 @@ public final class Main {
             List<DeliveryLine> lines = BatchRun.run(rows, finder, refresh, (done, total, line, fromCache) ->
                     out.println(progressLine(done, total, line, fromCache)));
 
-            Path folder = DeliveryWriter.newFolderNextTo(sheet);
+            Path folder = DeliveryWriter.newFolder(outputRoot, "Fotos " + LocalDate.now(clock));
             var written = DeliveryWriter.write(folder, lines);
             summary(out, written, Duration.ofNanos(System.nanoTime() - started));
             if (open) opener.accept(folder);
@@ -143,10 +163,11 @@ public final class Main {
 
     private static void usage(PrintStream out) {
         out.println("Uso: arrastrá la planilla (.xlsx o .csv, con columnas SKU y EAN) sobre el acceso directo,");
-        out.println("o por consola:  fotos-tool <planilla> [--refresh] [--cache <carpeta>] [--no-abrir]");
+        out.println("o por consola:  fotos-tool <planilla> [--refresh] [--cache <carpeta>] [--salida <carpeta>] [--no-abrir]");
         out.println();
         out.println("  --refresh     vuelve a consultar las tiendas por los EAN de esta planilla");
         out.println("  --cache       carpeta donde se guardan las fotos ya encontradas");
+        out.println("  --salida      carpeta donde se crea \"Fotos <fecha>\" (por defecto, la carpeta del programa)");
         out.println("  --no-abrir    no abre la carpeta al terminar");
     }
 
@@ -162,6 +183,22 @@ public final class Main {
         String local = System.getenv("LOCALAPPDATA");
         Path base = local != null && !local.isBlank() ? Path.of(local) : Path.of(System.getProperty("user.home"), ".local", "share");
         return base.resolve("api-fotos").resolve("cache");
+    }
+
+    /**
+     * The folder this program is installed in, found from where its jar is: {@code <install>/lib/fotos-tool-x.jar} with a
+     * {@code <install>/bin} next to {@code lib}. Null when it is not an install (a build, a test, an IDE).
+     */
+    static Path installDir() {
+        try {
+            Path jar = Path.of(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            Path lib = jar.getParent();
+            Path install = lib == null ? null : lib.getParent();
+            if (jar.toString().endsWith(".jar") && install != null && Files.isDirectory(install.resolve("bin"))) return install;
+        } catch (Exception e) {
+            // Fall through: not an install.
+        }
+        return null;
     }
 
     private static void openFolder(Path folder) {
