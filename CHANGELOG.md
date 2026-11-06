@@ -15,7 +15,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning:
   next to the sheet. A second run the same day is `Fotos <date> (2)`, never a reuse. `DeliveryWriter.newFolderNextTo`
   became `newFolder(root, name)`; the name is chosen by the caller, not taken from the client sheet. Locked in by
   `MainTest` and `DeliveryWriterTest.theDeliveryFolderIsNeverReused`.
-- `scripts/herramienta/instalar.ps1` installs to `C:DevFotos Tienda` and no longer creates a desktop shortcut (each person
+- `scripts/herramienta/instalar.ps1` installs to `C:\Dev\Fotos Tienda` and no longer creates a desktop shortcut (each person
   makes theirs). Because deliveries now live in the install folder, an update replaces only `bin`, `lib` and the launcher
   and never wipes the folder; it still refuses a non-empty folder that is not a previous install.
 
