@@ -138,6 +138,33 @@ class DeliveryWriterTest {
         assertTrue(report.contains("\"'+cmd\""), report);
     }
 
+    /** Rows with bad data are ignored: counted in the gallery's header and explained in the report, but with no card. */
+    @Test
+    void anIgnoredRowHasNoCardInTheGalleryButStaysInTheReport() throws IOException {
+        var written = write(
+                ok(2, "640008", "7791337010604", "Flan", photo(Kind.ORIGINAL, ImageFormat.JPEG, (byte) 1)),
+                DeliveryLine.invalid(3, "S1", "", "Articulo sin barras", RowProblem.NO_EAN, RowProblem.NO_EAN.message()),
+                DeliveryLine.invalid(4, "S2", "123", "Articulo roto", RowProblem.BAD_EAN, RowProblem.BAD_EAN.message()),
+                DeliveryLine.without(5, "S3", "7791337009608", "Postre", Result.SIN_IMAGEN, "Ninguna tienda lo vende."));
+
+        String html = Files.readString(written.gallery(), StandardCharsets.UTF_8);
+        String report = Files.readString(written.report(), StandardCharsets.UTF_8);
+
+        assertFalse(html.contains("Articulo sin barras") || html.contains("Articulo roto"), "no card for an ignored row");
+        assertTrue(html.contains("Postre"), "a product that was looked up and has no image still has its card");
+        assertTrue(html.contains("2 productos consultados"), html.substring(html.indexOf("<h1>"), html.indexOf("<h1>") + 60));
+        assertTrue(html.contains("Se ignoraron 2 filas"), "the header says how many were left out");
+        assertTrue(report.contains("Articulo sin barras") && report.contains("Articulo roto"), "but the report explains each one");
+        assertTrue(report.contains("No tiene código de barras") && report.contains("EAN inválido"), report);
+    }
+
+    @Test
+    void theGalleryDoesNotMentionIgnoredRowsWhenThereAreNone() throws IOException {
+        var written = write(ok(2, "640008", "7791337010604", "Flan", photo(Kind.ORIGINAL, ImageFormat.JPEG, (byte) 1)));
+
+        assertFalse(Files.readString(written.gallery(), StandardCharsets.UTF_8).contains("Se ignoraron"));
+    }
+
     @Test
     void theGalleryPointsAtThePhotosByRelativePath() throws IOException {
         var written = write(ok(2, "640008", "7791337010604", "Flan", photo(Kind.ORIGINAL, ImageFormat.JPEG, (byte) 1)));

@@ -3,12 +3,12 @@ package com.axum.fotos.tool;
 import com.axum.fotos.core.Ean;
 import com.axum.fotos.core.delivery.DeliveryLine;
 import com.axum.fotos.core.delivery.DeliveryLine.Result;
+import com.axum.fotos.core.delivery.RowChecker;
 import com.axum.fotos.core.sheet.ProductRow;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -25,15 +25,20 @@ import org.slf4j.LoggerFactory;
  * program waiting for the slowest of the seven stores on every product. How hard the stores are hit does NOT grow
  * with it without limit, because each store is paced on its own (a minimum time between two requests to it).
  *
+ * <p>Rows with bad data (no EAN, invalid EAN, no SKU, a SKU that is not a file name, a SKU repeated with another EAN) are
+ * IGNORED: {@link RowChecker} sorts them out first, so no store is asked about them and the progress callback never hears of
+ * them; they come back as lines that explain themselves, for the report. The progress total is the number of rows that
+ * are really looked up.
+ *
  * <p>The lines come back in the order of the rows, whatever order they finished in. One bad row never stops the
- * others: an invalid EAN, a missing SKU or an unexpected failure becomes a line that says so. An EAN that appears in
+ * others: an unexpected failure becomes a line that says so. An EAN that appears in
  * several rows (the same product under two SKUs) is looked up once, even when those rows run at the same time.
  */
 public final class BatchRun {
 
     private static final Logger log = LoggerFactory.getLogger(BatchRun.class);
 
-    /** Called after each row, one at a time (never two at once), so the person sees it moving. */
+    /** Called after each row that is looked up, one at a time (never two at once), so the person sees it moving. */
     @FunctionalInterface
     public interface Progress {
         void row(int done, int total, DeliveryLine line, boolean fromCache);
@@ -47,8 +52,16 @@ public final class BatchRun {
     }
 
     public static List<DeliveryLine> run(List<ProductRow> rows, PhotoFinder finder, boolean refresh, int parallelism, Progress progress) {
-        int total = rows.size();
-        DeliveryLine[] lines = new DeliveryLine[total];
+        List<RowChecker.Checked> checked = RowChecker.check(rows);
+        int total = (int) checked.stream().filter(RowChecker.Checked::usable).count();
+        DeliveryLine[] lines = new DeliveryLine[rows.size()];
+        for (int i = 0; i < lines.length; i++) {
+            RowChecker.Checked c = checked.get(i);
+            if (!c.usable()) {
+                ProductRow r = c.row();
+                lines[i] = DeliveryLine.invalid(r.row(), r.sku(), r.ean(), r.description(), c.problem(), c.detail());
+            }
+        }
         Map<String, CompletableFuture<Lookup>> lookedUp = new ConcurrentHashMap<>();
         int[] done = {0};
         Object progressLock = new Object();
@@ -56,11 +69,13 @@ public final class BatchRun {
         ExecutorService workers = Executors.newFixedThreadPool(Math.max(1, Math.min(parallelism, Math.max(1, total))));
         try {
             List<Future<?>> pending = new ArrayList<>();
-            for (int i = 0; i < total; i++) {
+            for (int i = 0; i < lines.length; i++) {
+                if (!checked.get(i).usable()) continue;
                 int index = i;
+                Ean ean = checked.get(i).ean().orElseThrow();
                 pending.add(workers.submit(() -> {
                     boolean[] fromCache = {false};
-                    DeliveryLine line = lineFor(rows.get(index), finder, refresh, lookedUp, fromCache);
+                    DeliveryLine line = lineFor(rows.get(index), ean, finder, refresh, lookedUp, fromCache);
                     lines[index] = line;
                     synchronized (progressLock) {
                         progress.row(++done[0], total, line, fromCache[0]);
@@ -88,20 +103,9 @@ public final class BatchRun {
         return DeliveryLine.without(0, "", "", "", Result.ERROR, "Se interrumpió antes de terminar. Volver a correr.");
     }
 
-    private static DeliveryLine lineFor(ProductRow row, PhotoFinder finder, boolean refresh,
+    /** A row that passed {@link RowChecker}: its EAN is valid and its SKU is usable. */
+    private static DeliveryLine lineFor(ProductRow row, Ean ean, PhotoFinder finder, boolean refresh,
                                         Map<String, CompletableFuture<Lookup>> lookedUp, boolean[] fromCache) {
-        Optional<Ean> parsed = Ean.tryParse(row.ean());
-        if (parsed.isEmpty()) {
-            String why = row.ean().isBlank()
-                    ? "No tiene código de barras (EAN) en la planilla: hay que cargarlo en el sistema de origen."
-                    : "EAN inválido: revisar el largo, que sean solo dígitos y el dígito verificador.";
-            return DeliveryLine.without(row.row(), row.sku(), row.ean(), row.description(), Result.DATOS_INVALIDOS, why);
-        }
-        if (row.sku().isBlank()) {
-            return DeliveryLine.without(row.row(), row.sku(), parsed.get().value(), row.description(), Result.DATOS_INVALIDOS,
-                    "Falta el SKU.");
-        }
-        Ean ean = parsed.get();
         try {
             var mine = new CompletableFuture<Lookup>();
             CompletableFuture<Lookup> existing = lookedUp.putIfAbsent(ean.value(), mine);

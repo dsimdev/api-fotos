@@ -3,6 +3,8 @@ package com.axum.fotos.tool;
 import com.axum.fotos.core.delivery.DeliveryLine;
 import com.axum.fotos.core.delivery.DeliveryLine.Result;
 import com.axum.fotos.core.delivery.DeliveryWriter;
+import com.axum.fotos.core.delivery.RowChecker;
+import com.axum.fotos.core.delivery.RowProblem;
 import com.axum.fotos.core.sheet.ProductRow;
 import com.axum.fotos.core.sheet.SheetFormatException;
 import com.axum.fotos.core.sheet.SpreadsheetReader;
@@ -15,7 +17,9 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
@@ -122,7 +126,9 @@ public final class Main {
         ExecutorService pool = Executors.newFixedThreadPool(8 * parallel);
         try {
             long started = System.nanoTime();
-            out.println("Planilla: " + sheet.getFileName() + " (" + rows.size() + " productos)");
+            long ignoredRows = RowChecker.check(rows).stream().filter(c -> !c.usable()).count();
+            out.println("Planilla: " + sheet.getFileName() + " (" + rows.size() + " filas: " + (rows.size() - ignoredRows)
+                    + " para consultar" + (ignoredRows > 0 ? " y " + ignoredRows + " que se ignoran por tener datos que corregir" : "") + ")");
             out.println("Caché de fotos: " + cacheDir);
             out.println("Las entregas se guardan en: " + outputRoot);
             out.println("Productos que se consultan a la vez: " + parallel);
@@ -157,12 +163,20 @@ public final class Main {
     private static void summary(PrintStream out, DeliveryWriter.Written written, Duration took) {
         long ok = count(written, Result.OK), none = count(written, Result.SIN_IMAGEN), error = count(written, Result.ERROR),
                 invalid = count(written, Result.DATOS_INVALIDOS);
+        Map<RowProblem, Long> byProblem = new EnumMap<>(RowProblem.class);
+        for (DeliveryLine l : written.lines()) {
+            if (l.result() == Result.DATOS_INVALIDOS && l.problem() != null) byProblem.merge(l.problem(), 1L, Long::sum);
+        }
         long warned = written.lines().stream().filter(l -> l.result() == Result.OK && !l.warnings().isEmpty()).count();
         out.println();
         out.println("Listo en " + took.toSeconds() + " s. " + written.lines().size() + " filas:");
         out.println("  " + ok + " con foto" + (warned > 0 ? " (" + warned + " con avisos para mirar en la galería)" : ""));
         out.println("  " + none + " sin imagen");
-        if (invalid > 0) out.println("  " + invalid + " con datos inválidos (EAN o SKU): están explicados en reporte.csv");
+        if (invalid > 0) {
+            // Ignored, not asked: one block of counts, never a line per row. Each one is explained in reporte.csv.
+            out.println("  " + invalid + " ignoradas por tener datos que corregir (no se consultaron; cada una está explicada en reporte.csv):");
+            byProblem.forEach((problem, n) -> out.println("      " + n + " " + problem.summary()));
+        }
         if (error > 0) {
             out.println("  " + error + " que no se pudieron consultar: volvé a correr la misma planilla,");
             out.println("    lo que ya se bajó queda guardado y solo se piden esas.");

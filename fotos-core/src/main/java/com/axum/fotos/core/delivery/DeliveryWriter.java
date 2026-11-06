@@ -90,7 +90,10 @@ public final class DeliveryWriter {
         return new Written(folder, photos, zip, report, gallery, names.size(), finals);
     }
 
-    /** A line that cannot be a file (bad SKU, SKU already used by another product) stops being OK and says why. */
+    /**
+     * The last line of defence for a caller that builds lines by hand: {@link RowChecker} already keeps such rows out of
+     * the batch run, but a photo must never be written under a name that is not a file name or over another product.
+     */
     private static List<DeliveryLine> resolveFileNames(List<DeliveryLine> lines) {
         Map<String, DeliveryLine> owner = new HashMap<>();
         var out = new ArrayList<DeliveryLine>();
@@ -100,15 +103,15 @@ public final class DeliveryWriter {
                 continue;
             }
             if (SkuFileName.of(line.sku()).isEmpty()) {
-                out.add(DeliveryLine.without(line.row(), line.sku(), line.ean(), line.description(), Result.DATOS_INVALIDOS,
-                        "El SKU no sirve como nombre de archivo: solo letras, números, punto, guion y guion bajo."));
+                out.add(DeliveryLine.invalid(line.row(), line.sku(), line.ean(), line.description(), RowProblem.BAD_SKU,
+                        RowProblem.BAD_SKU.message()));
                 continue;
             }
             String key = line.sku().trim().toLowerCase(Locale.ROOT);
             DeliveryLine first = owner.putIfAbsent(key, line);
             if (first != null && !first.ean().equals(line.ean())) {
-                out.add(DeliveryLine.without(line.row(), line.sku(), line.ean(), line.description(), Result.DATOS_INVALIDOS,
-                        "SKU repetido con otro EAN (ya está en la fila " + first.row() + ")."));
+                out.add(DeliveryLine.invalid(line.row(), line.sku(), line.ean(), line.description(), RowProblem.SKU_REUSED,
+                        RowProblem.skuReused(first.row())));
                 continue;
             }
             out.add(line);
@@ -154,10 +157,14 @@ public final class DeliveryWriter {
     }
 
     private static String gallery(List<DeliveryLine> lines) {
+        long ignored = lines.stream().filter(l -> l.result() == Result.DATOS_INVALIDOS).count();
+        long shown = lines.size() - ignored;
         long ok = lines.stream().filter(l -> l.result() == Result.OK).count();
         long withWarnings = lines.stream().filter(l -> l.result() == Result.OK && !l.warnings().isEmpty()).count();
         var cards = new StringBuilder();
         for (DeliveryLine l : lines) {
+            // Rows with bad data are ignored here: they are only counted above and explained in reporte.csv.
+            if (l.result() == Result.DATOS_INVALIDOS) continue;
             String label = esc(l.description()) + "<br>SKU " + esc(l.sku()) + " · " + esc(l.ean());
             if (l.result() == Result.OK) {
                 String note = l.warnings().isEmpty() ? "<p class=\"tag green\">Sin avisos</p>"
@@ -166,8 +173,7 @@ public final class DeliveryWriter {
                         .append(label).append("</h3><p>").append(esc(l.store())).append(" · ").append(l.side()).append(" px · ")
                         .append(l.kind() == Candidate.Kind.ORIGINAL ? "original" : "banner recortado").append("</p>").append(note).append("</article>\n");
             } else {
-                String why = l.result() == Result.ERROR ? "No se pudo consultar: volver a correr"
-                        : l.result() == Result.DATOS_INVALIDOS ? "Fila con datos inválidos" : "Sin imagen";
+                String why = l.result() == Result.ERROR ? "No se pudo consultar: volver a correr" : "Sin imagen";
                 cards.append("<article class=\"none\"><div class=\"ph\">").append(esc(why)).append("</div><h3>").append(label)
                         .append("</h3><p class=\"tag red\">").append(esc(l.detail())).append("</p></article>\n");
             }
@@ -182,8 +188,10 @@ public final class DeliveryWriter {
                 + "h3{margin:4px 0 0;font-size:12px;color:#1b2016;font-weight:600}article p{margin:0;font-size:11px;color:#636b5c}\n"
                 + ".tag{align-self:flex-start;padding:1px 8px;border-radius:999px;border:1px solid currentColor;font-weight:600}\n"
                 + ".green{color:#2f6b2f}.amber{color:#8a5a00}.red{color:#b3261e}\n</style></head><body>\n"
-                + "<h1>" + lines.size() + " productos de la planilla</h1>\n<p class=\"sum\">" + ok + " con foto ("
-                + withWarnings + " con avisos para mirar), " + (lines.size() - ok) + " sin foto. Cada archivo de la carpeta "
+                + "<h1>" + shown + " productos consultados</h1>\n<p class=\"sum\">" + ok + " con foto ("
+                + withWarnings + " con avisos para mirar), " + (shown - ok) + " sin foto."
+                + (ignored == 0 ? "" : " Se ignoraron " + ignored + " filas de la planilla con datos que corregir (sin EAN, EAN inválido o SKU que no sirve): están explicadas en <b>reporte.csv</b>.")
+                + " Cada archivo de la carpeta "
                 + "<b>fotos/</b> se llama como su SKU: para cambiar una foto, reemplazá el archivo (y volvé a armar el zip).</p>\n"
                 + "<div class=\"grid\">\n" + cards + "</div></body></html>\n";
     }

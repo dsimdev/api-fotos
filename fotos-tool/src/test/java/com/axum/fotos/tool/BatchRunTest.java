@@ -8,6 +8,7 @@ import com.axum.fotos.core.StoreCatalog;
 import com.axum.fotos.core.StoreProduct;
 import com.axum.fotos.core.cache.LocalCache;
 import com.axum.fotos.core.delivery.DeliveryLine.Result;
+import com.axum.fotos.core.delivery.RowProblem;
 import com.axum.fotos.core.sheet.ProductRow;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -116,14 +117,52 @@ class BatchRunTest {
         assertEquals(Result.OK, lines.get(1).result());
     }
 
+    /** Rows with bad data are ignored: the person is never told about them one by one, and the total is what is really asked. */
     @Test
-    void progressIsReportedAfterEveryRow() {
+    void progressIsReportedOnlyForTheRowsThatAreLookedUp() {
         var seen = new ArrayList<String>();
 
-        BatchRun.run(List.of(row(2, "1", EAN_A), row(3, "2", "123")), finder(false), false,
+        var lines = BatchRun.run(List.of(row(2, "1", "123"), row(3, "2", EAN_A), row(4, "", EAN_B), row(5, "3", ""), row(6, "4", EAN_B)), finder(false), false,
                 (done, total, line, fromCache) -> seen.add(done + "/" + total + " " + line.result()));
 
-        assertEquals(List.of("1/2 OK", "2/2 DATOS_INVALIDOS"), seen);
+        assertEquals(List.of("1/2 OK", "2/2 OK"), seen);
+        assertEquals(5, lines.size(), "the ignored ones still come back, for the report");
+        assertEquals(List.of(Result.DATOS_INVALIDOS, Result.OK, Result.DATOS_INVALIDOS, Result.DATOS_INVALIDOS, Result.OK),
+                lines.stream().map(l -> l.result()).toList());
+    }
+
+    @Test
+    void anIgnoredRowIsNeverAskedAboutAndSaysWhichKindOfProblemItHas() {
+        var rows = List.of(row(2, "1", ""), row(3, "2", "123"), row(4, "", EAN_A), row(5, "a/b", EAN_A), row(6, "CON", EAN_B));
+
+        var lines = BatchRun.run(rows, finder(false), false, 3, (d, t, l, c) -> { });
+
+        assertEquals(0, storeCalls.get(), "not one store was asked: everything here is ignored");
+        assertEquals(List.of(RowProblem.NO_EAN, RowProblem.BAD_EAN, RowProblem.NO_SKU, RowProblem.BAD_SKU, RowProblem.BAD_SKU),
+                lines.stream().map(l -> l.problem()).toList());
+        assertTrue(lines.stream().allMatch(l -> l.result() == Result.DATOS_INVALIDOS && l.detail() != null));
+    }
+
+    @Test
+    void aSkuReusedWithAnotherEanIsIgnoredAndTheFirstOneKeepsIt() {
+        var lines = BatchRun.run(List.of(row(2, "77", EAN_A), row(3, "77", EAN_B)), finder(false), false, (d, t, l, c) -> { });
+
+        assertEquals(Result.OK, lines.get(0).result());
+        assertEquals(RowProblem.SKU_REUSED, lines.get(1).problem());
+        assertTrue(lines.get(1).detail().contains("fila 2"), lines.get(1).detail());
+        assertEquals(1, storeCalls.get(), "the second product was never asked about");
+    }
+
+    @Test
+    void aSheetWhereEverythingIsIgnoredStillReturnsItsLinesAndAsksNothing() {
+        var seen = new ArrayList<String>();
+
+        var lines = BatchRun.run(List.of(row(2, "1", ""), row(3, "2", "")), finder(false), false, 4,
+                (d, t, l, c) -> seen.add("called"));
+
+        assertEquals(2, lines.size());
+        assertTrue(seen.isEmpty());
+        assertEquals(0, storeCalls.get());
     }
 
     @Test

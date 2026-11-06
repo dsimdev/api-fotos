@@ -11,10 +11,11 @@ import java.util.List;
  * @param row     the row in the file, to point the person at it
  * @param image   only for OK: the bytes of the photo; null otherwise
  * @param detail  why there is no photo (or a note about the one there is); free text for the report
+ * @param problem only for DATOS_INVALIDOS: which kind of problem the row has, so the summary can count them by kind
  */
 public record DeliveryLine(int row, String sku, String ean, String description, Result result, String store,
                            Candidate.Kind kind, ImageFormat format, int side, List<Warning> warnings,
-                           byte[] image, String detail) {
+                           byte[] image, String detail, RowProblem problem) {
 
     public enum Result {
         /** There is a photo for this SKU. */
@@ -43,10 +44,15 @@ public record DeliveryLine(int row, String sku, String ean, String description, 
     public static DeliveryLine ok(int row, String sku, String ean, String description, Candidate chosen, List<Warning> warnings,
                                   String note) {
         return new DeliveryLine(row, sku, ean, description, Result.OK, chosen.store(), chosen.kind(), chosen.format(),
-                chosen.side(), warnings, chosen.bytes(), note);
+                chosen.side(), warnings, chosen.bytes(), note, null);
     }
 
     public static DeliveryLine without(int row, String sku, String ean, String description, Result result, String detail) {
-        return new DeliveryLine(row, sku, ean, description, result, null, null, null, 0, List.of(), null, detail);
+        return new DeliveryLine(row, sku, ean, description, result, null, null, null, 0, List.of(), null, detail, null);
+    }
+
+    /** A row that is ignored (see {@link RowProblem}): not looked up, only counted and explained in the report. */
+    public static DeliveryLine invalid(int row, String sku, String ean, String description, RowProblem problem, String detail) {
+        return new DeliveryLine(row, sku, ean, description, Result.DATOS_INVALIDOS, null, null, null, 0, List.of(), null, detail, problem);
     }
 }

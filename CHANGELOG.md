@@ -30,6 +30,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning:
 - A row with no barcode now says "No tiene código de barras (EAN) en la planilla" instead of "EAN inválido": in an export of
   a client whose articles have no barcode loaded, that is the common case and "invalid" sent people looking for a typo.
   `BatchRunTest.aRowWithoutAnEanSaysItIsMissingInsteadOfInvalid`.
+- **Rows with bad data are ignored** (no EAN, invalid EAN, no SKU, a SKU that is not a file name, a SKU already used by another
+  EAN): no store is asked about them, they are not printed one by one, and they have no card in the gallery. They are counted
+  by kind in the summary and explained in `reporte.csv`. With a client export of thousands of articles, most of them without
+  a barcode, the screen would otherwise print thousands of lines that bury the ones that matter. The rules moved to one place,
+  `RowChecker`, which runs BEFORE any lookup: a SKU that cannot be a file name used to be looked up and only discarded when the
+  delivery was written, spending store requests on something never delivered. The progress total is now the number of rows
+  actually looked up. `DeliveryLine` gained `problem` so the summary can count by kind; `DeliveryWriter` keeps its own check as
+  a last line of defence for lines built by hand. Locked in by `RowCheckerTest`, `BatchRunTest` (never asked, progress only for
+  looked-up rows, everything ignored), `DeliveryWriterTest.anIgnoredRowHasNoCardInTheGalleryButStaysInTheReport` and
+  `MainTest.manyRowsWithBadDataArePrintedAsOneBlockOfCountsNotOneLineEach` (340 bad rows: one progress line).
 
 ### Fixed
 - Axum's article export was rejected ("no encontré las columnas SKU y EAN"): it names the barcode column `codbarra`, singular,

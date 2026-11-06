@@ -158,10 +158,37 @@ class MainTest {
         assertEquals(List.of(folder), opened);
         assertTrue(out().contains("1 con foto"), out());
         assertTrue(out().contains("1 sin imagen"), out());
-        assertTrue(out().contains("1 con datos inválidos"), out());
+        assertTrue(out().contains("1 ignoradas por tener datos que corregir"), out());
+        assertTrue(out().contains("1 con EAN inválido"), out());
+        assertTrue(out().contains("3 filas: 2 para consultar y 1 que se ignoran"), out());
         assertTrue(out().contains("Las entregas se guardan en: " + program), out());
         String report = Files.readString(folder.resolve("reporte.csv"), StandardCharsets.UTF_8);
         assertTrue(report.contains("640008") && report.contains("OK_RECORTADA"), report);
+    }
+
+    /** The point of ignoring: a sheet full of articles without a barcode must not print a line for each of them. */
+    @Test
+    void manyRowsWithBadDataArePrintedAsOneBlockOfCountsNotOneLineEach() throws IOException {
+        var csv = new StringBuilder("codigo,descripcion,codbarra\n640008,Flan,7791337010604\n");
+        for (int i = 0; i < 300; i++) csv.append("X").append(i).append(",Sin codigo de barras,\n");
+        for (int i = 0; i < 40; i++) csv.append("Y").append(i).append(",EAN roto,12345\n");
+        Path file = sheet(csv.toString());
+
+        int code = runInstalledIn(dir.resolve("Fotos Tienda"), file.toString(), "--cache", dir.resolve("c").toString());
+
+        assertEquals(0, code, out());
+        long printedRows = out().lines().filter(l -> l.startsWith("[")).count();
+        assertEquals(1, printedRows, "only the one row that was looked up has a progress line\n" + out());
+        assertFalse(out().contains("SKU X1 "), out());
+        assertTrue(out().contains("340 ignoradas por tener datos que corregir"), out());
+        assertTrue(out().contains("300 sin código de barras (EAN)"), out());
+        assertTrue(out().contains("40 con EAN inválido"), out());
+        Path folder = dir.resolve("Fotos Tienda").resolve("Fotos 2026-11-06");
+        String report = Files.readString(folder.resolve("reporte.csv"), StandardCharsets.UTF_8);
+        assertEquals(342, report.lines().count(), "header + 341 rows: every one is explained in the report");
+        String gallery = Files.readString(folder.resolve("galeria.html"), StandardCharsets.UTF_8);
+        assertFalse(gallery.contains("X1<") || gallery.contains("SKU X1 "), "no card for an ignored row");
+        assertTrue(gallery.contains("Se ignoraron 340 filas"), gallery.substring(0, Math.min(900, gallery.length())));
     }
 
     @Test

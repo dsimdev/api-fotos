@@ -109,8 +109,16 @@ destino cuando la herramienta ande.
 
 Estados del reporte: `OK` (original de la tienda, sin tocar), `OK_RECORTADA` (se le quitó el panel de plantilla),
 `SIN_IMAGEN` (ninguna tienda lo vende, o ninguna tiene una foto utilizable: el detalle lo dice), `ERROR` (una tienda
-no respondió: **volver a correr la misma planilla**, solo se piden esas), `DATOS_INVALIDOS` (EAN mal, SKU faltante,
-SKU que no sirve de nombre de archivo, SKU repetido con otro EAN).
+no respondió: **volver a correr la misma planilla**, solo se piden esas), `DATOS_INVALIDOS` (la fila **se ignora**, ver
+abajo).
+
+**Lo que está mal se ignora** (decidido el 2026-11-06). Una fila sin EAN, con EAN inválido, sin SKU, con un SKU que no
+sirve de nombre de archivo (barras, espacios, `..`, `CON`...) o con un SKU que una fila anterior ya usa para otro EAN
+**no se consulta a ninguna tienda, no se imprime fila por fila y no tiene tarjeta en la galería**. Se cuenta por tipo en
+el resumen ("239 sin código de barras (EAN)", "64 con EAN inválido") y cada una queda explicada en `reporte.csv`, que es
+donde se arregla. La revisión la hace un solo lugar (`RowChecker`) **antes** de gastar una consulta; el SKU repetido lo
+conserva la primera fila. Con el export de Axum medido (1312 artículos): 1009 se consultan y 303 se ignoran (239 sin
+código de barras y 64 con EAN inválido), y la pantalla muestra solo las 1009.
 
 Opciones por consola: `--refresh` (vuelve a consultar las tiendas por los EAN de esa planilla), `--cache <carpeta>`,
 `--salida <carpeta>` (dónde crear `Fotos <fecha>`, en vez de la carpeta del programa), `--paralelo <1-8>` (cuántos
