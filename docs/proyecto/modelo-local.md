@@ -16,7 +16,7 @@ Es decir: **una herramienta que corre en la máquina del usuario, por lotes y a 
 
 ## 2. El proceso
 
-1. El cliente pasa una **planilla** con descripción, SKU y EAN (como `eans danone.xlsx`).
+1. El cliente pasa una **planilla** con descripción, SKU y EAN (como la planilla de Danone de la tienda, que ya no está en el repo).
 2. La herramienta busca cada EAN **primero en la caché local** y solo consulta a las tiendas VTEX si no está.
 3. Baja las imágenes con las reglas de seguridad, quita el banner cuando se puede y elige una por producto.
 4. Arma una **carpeta (o un ZIP) con una foto por producto nombrada con el SKU** (`<SKU>.jpg`) y un **reporte** con lo

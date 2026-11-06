@@ -218,7 +218,8 @@ Ojo: `detect-banner.mjs` pisa el `banner-detect.json` de la carpeta anterior si 
 
 La planilla de la tienda (`eans danone.xlsx`: descripción, SKU y EAN; **130 EAN, todos de 13 dígitos, todos con
 dígito verificador válido, sin repetidos**; familias de lácteos: yogures, postres, quesos untables y leches). La
-planilla es un dato del cliente y no se versiona (`.gitignore` ignora las planillas).
+planilla es un dato del cliente y no se versiona (`.gitignore` ignora las planillas). **Se borró de la raíz del repo el
+2026-11-06 a pedido del usuario**: para repetir esta medición hay que pedirle la planilla de nuevo a la tienda.
 
 **Método:** las 7 tiendas a la vez por cada EAN y una pausa de 1 s: cada tienda recibe unas 0,7 consultas por
 segundo. La medición se detiene sola si una tienda contesta 401, 403 o 429, y no insiste (no pasó).
@@ -358,5 +359,5 @@ ampliado, franjas de los bordes y unas 25 fotos a tamaño completo, más medidas
 
 ```
 ./gradlew :fotos-tool:installDist
-fotos-tool/build/install/fotos-tool/bin/fotos-tool.bat "eans danone.xlsx" --refresh --no-abrir
+fotos-tool/build/install/fotos-tool/bin/fotos-tool.bat "<planilla de la tienda>.xlsx" --refresh --no-abrir
 ```
