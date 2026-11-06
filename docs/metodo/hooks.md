@@ -99,6 +99,19 @@ Vale saberlos, porque el silencio de un hook se parece mucho a "está todo bien"
 - **Otro manifiesto de versión**: agregarlo al array `$allow` del hook de edición en main, para
   poder bumpear la versión estando en main.
 
+**Si adaptás un hook, anotalo en `.claude/KIT_LOCAL`.** Es una lista de archivos del kit que este
+proyecto cambia a propósito (`.claude/settings.json`, o un `docs/metodo/*.md`), una ruta por línea y el
+motivo después de ` #`:
+
+```text
+.claude/settings.json  # el checklist de deploy no menciona CHANGELOG_USER.md: este proyecto no lo lleva
+```
+
+Con eso `verificar.ps1` lo muestra como *adaptado a propósito* (en vez de "desactualizado" para
+siempre) y `actualizar.ps1 -Aplicar` **no lo pisa**. Sin el archivo, el único modo de conservar la
+adaptación es no actualizar nunca ese proyecto. La contrapartida: lo que declarás local ya no
+recibe los arreglos del kit solo; `actualizar.ps1` te muestra el diff y el cambio se porta a mano.
+
 Después de tocar cualquier cosa acá: **reiniciar la sesión** y verificar con
 `scripts/verificar.ps1`. Un hook con un error de sintaxis de PowerShell falla en silencio —
 el `catch {}` del final se traga todo— y un hook que no bloquea se ve igual que uno que te deja

@@ -133,6 +133,18 @@ la superficie antes de pedirle a nadie que toque el servidor real. Un test menta
 cubrí todos los casos" pierde contra un caso real que no se imaginó; un proxy real corriendo
 local no depende de haberlo imaginado.
 
+**20. Una entrega se revisa completa, y por alguien que no sabe qué esperás ver.**
+Antes de decir que lo entregado está bien, revisalo **entero** y con un revisor independiente (otro
+agente, otra persona) al que **no** le pasás tu conclusión: quien recibe tu hipótesis tiende a
+confirmarla, y una muestra que elegiste vos no ve lo que no sabías buscar. Caso real: se afirmó
+"12 de 12 recortes bien" sobre una muestra propia (una pieza por familia); una revisión
+independiente de las 124 piezas encontró 8 que todavía tenían el panel de nombre y peso puesto, y
+la entrega iba a un cliente que las habría publicado.
+
+Después de corregir, volvé a revisar **lo que cambió**: la cifra vieja ya no vale, y se marca como
+inválida en vez de dejarla conviviendo con la nueva. Y decí siempre lo que la herramienta **no**
+verifica, para que nadie crea que ese silencio es una aprobación.
+
 ---
 
 ## Sobre los hooks
