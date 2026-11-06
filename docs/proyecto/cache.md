@@ -1,4 +1,10 @@
-# Caché — BORRADOR
+# Caché — BORRADOR (modelo alojado, EN SUSPENSO)
+
+> **Qué quedó vigente y qué no (2026-11-06).** El **principio** de la sección 1 sí rige y está implementado en la
+> herramienta local como una carpeta de caché por EAN (`modelo-local.md`, sección 7): se contesta desde la caché y las
+> tiendas solo se consultan si el EAN no está, las entradas no vencen, y "no lo vende nadie" solo se guarda si TODAS las
+> tiendas respondieron (un error nunca es una respuesta). **El diseño de las secciones 3 y 4 (capas, `LOADING`,
+> cortacircuito, alertas, índice en SQL Server) es del servicio alojado**, que está frenado: no se construyó.
 
 > **Estado: borrador del 2026-11-06.** El principio (sección 1) lo decidió el usuario. El diseño de las
 > secciones 3 y 4 es una propuesta mía, armada leyendo el código de `api-bonificaciones` (no de memoria), y

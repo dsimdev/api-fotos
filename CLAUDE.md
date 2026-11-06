@@ -1,13 +1,14 @@
 # api-fotos — Directivas para Claude Code
 
-Servicio que recibe un código de barras (EAN) y devuelve una imagen recomendada del producto, más los
-demás candidatos. Primer cliente: la tienda `senderolaser`, que no tiene imágenes de sus productos;
-lo consume el backend de la tienda, que recorre todos sus códigos, y una persona del cliente confirma
-o cambia cada imagen en el sistema de la tienda. Es una API con un panel de administración embebido.
+Herramienta local que recibe la planilla de un cliente (SKU y EAN) y arma una carpeta con **una foto por
+producto, nombrada con el SKU**, sacada de los catálogos públicos de supermercados argentinos (VTEX) y sin el
+panel de plantilla del proveedor. Primer cliente: la tienda `senderolaser`, que no tiene imágenes de sus
+productos; el usuario corre la herramienta cuando el cliente pide las fotos y le entrega el resultado a la tienda
+para que lo suba. (Nació como un servicio con API y panel; ese modelo quedó frenado, ver abajo.)
 
 > **DECIDIDO (2026-11-06): esto es una herramienta local, no un servicio.** Corre en la máquina del usuario
 > cuando un cliente le pide fotos: el cliente pasa una planilla con SKU y EAN, el usuario la **arrastra sobre el
-> lanzador** (instalado en `C:\Dev\Fotos Tienda`), y la herramienta arma, dentro de esa carpeta, una `Fotos <fecha>`
+> lanzador** (instalado en `C:\Dev\app-fotos`), y la herramienta arma, dentro de esa carpeta, una `Fotos <fecha>`
 > con una foto por producto **nombrada con el SKU**, un ZIP, un reporte y una galería, que el usuario le entrega a la tienda para que la suba. Lo medido sigue valiendo.
 > Lo que depende de hospedar un servicio (API con clave por cliente, SQL Server, login, deploy, alertas,
 > `LOADING`) queda **en suspenso: no construirlo** salvo que el usuario vuelva a pedirlo. Qué se construyó, cómo
@@ -15,13 +16,13 @@ o cambia cada imagen en el sistema de la tienda. Es una API con un panel de admi
 > caché compartida o el servidor describen el modelo alojado y están en suspenso**; lo que sí rige para la
 > herramienta es la seguridad (sección 6), el EAN validado, los datos (sección 5, salvo lo de la API) y el testing.
 
-**Etapa actual (2026-11-06): la herramienta local anda de punta a punta** (rama `feat/skeleton`, módulo
-`fotos-tool`; cuatro módulos Gradle: `fotos-core` sin framework, `fotos-stores` con el conector de las tiendas,
-`fotos-tool` con la línea de comandos y `fotos-app` con el servicio y el panel del modelo alojado). **`fotos-app`
-queda frenado pero NO se saca** (decidido el 2026-11-06): se conserva por si hay que escalar a un servicio, sin
-construir nada nuevo encima. Falta publicar la herramienta (versión, changelog, merge a `main` con la confirmación
-del usuario). Las mediciones están en `docs/proyecto/mediciones.md`; lo investigado y la prueba con 10 productos
-de dyssa, en `docs/proyecto/origen/`.
+**Etapa actual (2026-11-06): v0.3.0.** Cuatro módulos Gradle: `fotos-core` (sin framework: planilla, recorte del
+panel, elección de la foto, caché, entrega), `fotos-stores` (conector de las tiendas y descarga segura),
+`fotos-tool` (la línea de comandos) y `fotos-app` (el servicio y el panel del modelo alojado). **`fotos-app` queda
+frenado pero NO se saca** (decidido el 2026-11-06): se conserva por si hay que escalar a un servicio, sin construir
+nada nuevo encima, y sigue compilando con sus tests. Cómo se usa: `README.md`. Cómo funciona y qué límites tiene:
+`docs/proyecto/modelo-local.md`. Lo medido: `docs/proyecto/mediciones.md`. Lo investigado antes y la prueba con
+10 productos de dyssa: `docs/proyecto/origen/`.
 
 > **Núcleo portable — no tocar sin motivo real:** secciones 1, 2, 3, 4, 8, 10, 11, 12.
 > **Por proyecto:** secciones 5, 6, 7, 9, 13.
@@ -40,8 +41,7 @@ Antes de `git push origin main`, completar en este orden **sin excepción**:
 3. **`CHANGELOG.md`** — entrada técnica en inglés con todos los cambios del release
 4. ~~`CHANGELOG_USER.md`~~ — **no se usa en este proyecto** (decisión 2026-11-05: un solo changelog,
    en inglés). Se conserva el número para no desalinear `docs/metodo/`
-5. **`README.md`** — actualizar "Current Version" y cualquier dato que haya cambiado (todavía no
-   existe: se crea en el primer release)
+5. **`README.md`** — actualizar "Current Version" y cualquier dato que haya cambiado
 6. `git tag vX.Y.Z && git push origin vX.Y.Z`
 7. **Confirmación explícita del usuario** para ESTE push puntual
 
@@ -50,15 +50,15 @@ Antes de `git push origin main`, completar en este orden **sin excepción**:
 Un hook pide aprobación al detectar un push que toca `main` o un tag `vX.Y.Z`. El hook es la
 última barrera, no el checklist: los pasos 1–6 son tuyos.
 
-**Si el cambio agrega o toca algo que un navegador carga directo** (el panel, Swagger, cualquier URL
-que la app arma para sí misma) y el servicio se publica detrás de un proxy con sub-ruta, como los
+**Solo si se retoma el servicio (`fotos-app`, hoy frenado): si el cambio agrega o toca algo que un navegador
+carga directo** (el panel, Swagger, cualquier URL que la app arma para sí misma) y el servicio se publica detrás de un proxy con sub-ruta, como los
 otros dos del servidor de la tienda: compilar con `-PpanelBasePath=/api/<servicio>/admin` y
 probarlo **a través** de `scripts/servidor/simular-proxy-anidado.ps1` (a copiar de
 `api-bonificaciones`), nunca solo contra `localhost`: probarlo directo no reproduce el bug. Ver
 `docs/metodo/lecciones.md` #19. El panel se compila siempre con la ruta configurable
 (`PANEL_BASE_PATH`, por defecto `/admin`), aunque todavía no se sepa dónde se publica.
 
-**Este servicio lo consumen otros** (el backend de la tienda). La API nueva nunca rompe al cliente
+**Si se retoma el servicio, lo consumen otros** (el backend de la tienda). La API nueva nunca rompe al cliente
 viejo: campos nuevos opcionales, endpoints nuevos en vez de cambiar la firma de los existentes, y
 el borrado de un campo va en un release posterior.
 
@@ -67,10 +67,11 @@ el borrado de un campo va en un release posterior.
 - Desarrollar en rama (`fix/…`, `feat/…`, `spike/…`) — NUNCA commitear directo a `main`
 - Merge directo a `main` + push (NO crear PRs)
 - Remoto: `https://github.com/dsimdev/api-fotos.git` (origin)
-- **Todavía no hay servidor ni deploy.** `main` se protege igual, por convención del kit. Cuando
-  haya deploy, se define acá qué pasa al pushear a `main` y cómo se hace el rollback
-- Los cambios de esquema de la base (SQL Server) van con migración **Flyway** versionada, nunca a
-  mano
+- **No hay servidor ni deploy.** Publicar es versión + changelog + tag + push, y después reinstalar la herramienta en
+  la PC del usuario con `scripts/herramienta/instalar.ps1`. `main` se protege igual, por convención del kit. El
+  rollback es volver a instalar la versión anterior (su tag). Si se retoma el servicio, se define acá su deploy
+- Los cambios de esquema de la base (SQL Server) van con migración **Flyway** versionada, nunca a mano (solo si se
+  retoma el servicio: hoy no hay base)
 
 ## 3. Antes de implementar — marco obligatorio para cada feature/fix
 
@@ -81,10 +82,11 @@ Para cada cosa que se pida, responder con este marco ANTES de codear:
 2. **Opciones / alternativas** — al menos dos
 3. **Complejidad y alcance** de cada opción
 4. **Mejoras** — si es viable
-5. **El entorno** — por definir: no hay servidor. Si corriera en el servidor de la tienda, ver
+5. **El entorno** — la PC del usuario (Windows, Java 21). Las consultas a las tiendas salen desde su IP: en las
+   mediciones (`mediciones.md`) no hubo un solo 429 ni 403, pero solo se probó hasta 3 productos a la vez; con más ritmo
+   no se midió, hay que medirlo antes de subirlo. Si algún día corriera en el servidor de la tienda, ver
    `C:\dev\docs\servidor\el-servidor-de-la-tienda.md` (reloj en UTC−12, entregas que pisan ajustes
-   manuales). Las consultas a las tiendas salen desde la IP del servicio: no se midió cuántas
-   aguanta cada una antes de limitar, hay que medirlo antes de escalar. **El tamaño del servidor no es restricción**
+   manuales). **El tamaño del servidor no es restricción**
    (decisión 2026-11-05: cuando haga falta se invierte en infra, y bonificaciones ya alerta por
    memoria); medir memoria y CPU para dimensionar, no para descartar. Pensar costos, encaje y
    viabilidad
@@ -106,35 +108,42 @@ Las tres primeras son portables y no se negocian:
 - **Ninguna operación crítica decide qué escribe a partir de un snapshot viejo o parcial** (cache,
   lo que mande el llamador). Para responder sirve; para escribir, se consulta la fuente de verdad
   primero. *(Esto corrompió datos reales en un proyecto anterior — ver `docs/metodo/lecciones.md`.)*
-- **Toda escritura que se pueda reintentar es idempotente.** El endpoint por lotes y los reintentos
-  del consumidor no pueden duplicar descargas ni registros: la clave natural es el EAN.
+- **Toda escritura que se pueda reintentar es idempotente.** En la herramienta: volver a correr la misma planilla
+  reutiliza lo ya bajado y nunca pisa una entrega anterior (cada corrida es una carpeta nueva); el mismo EAN no se
+  consulta dos veces, ni entre corridas (la caché) ni dentro de una (varias filas con el mismo EAN). La clave
+  natural es el EAN.
 - **Las migraciones son aditivas.** Quitar o renombrar va en dos releases, nunca junto con dejar
-  de usar el campo.
+  de usar el campo. (Solo si se retoma el servicio: hoy no hay base.)
 
-Propias del dominio (**provisorias**: se confirman al definir el contrato de la API):
+Propias del dominio. Lo que dice "servicio" o "API" es del modelo alojado, en suspenso:
 
-- **Nunca devolver una imagen inventada.** Si no hay candidato aceptable, el estado es explícito
-  (el brief lo llama `SIN_IMAGEN`); jamás una imagen de relleno ni "la más parecida".
-- **Cada candidato lleva su traza**: tienda y página del comercio de donde salió, posición en la
-  tienda, resolución y si se le quitó el banner; y la recomendada dice por qué se eligió. Sirve para
-  auditar y para que quien la cambie decida con información. Es la idea de "traza" de MotorFiscal.
-- **Siempre se contesta desde NUESTRA caché; VTEX solo se consulta si el EAN no está.** Las entradas
-  **nunca vencen** y un EAN sin imagen no se reintenta solo: solo se vuelve a consultar si la tienda
-  (operación explícita de la API) o el panel piden refrescar. Decidido el 2026-11-06. La caché es por EAN, compartida entre
-  clientes (las imágenes son del producto, no del cliente), con la imagen en almacenamiento propio:
-  no se enlaza la URL del comercio, esas URLs mueren. **El molde es el caché de `api-bonificaciones`**
-  (una sola carga por clave, no hacer esperar un request por una descarga larga, servir lo viejo si
-  la fuente falla y avisar, medir desalojos). Diseño y preguntas abiertas: `docs/proyecto/cache.md`.
-- **Se devuelve un frente verificado, no cualquier imagen de la tienda.** Solo la posición 0 de
-  cada tienda (las posteriores pueden ser del reverso del envase, como pasó con Hesperidina) y sin
-  el panel de banner de la plantilla: se recorta si es un objeto separado del producto, y si no se
-  puede, esa imagen no se recomienda nunca. Nunca se corta el producto.
-- **El servicio recomienda UNA imagen y devuelve además los demás candidatos** (decidido el
-  2026-11-05). La tienda guarda la recomendada o la cambia por otro candidato: el caso normal es
-  automático y quien quiera corrige. Si no hay ningún candidato aceptable el estado es explícito
-  (sin imagen) y no hay recomendada. Borrador del contrato: `docs/proyecto/contrato-api.md`.
-
-Nombres finales de los estados (el brief usa `OK`, `CON_MARCA`, `SIN_IMAGEN`): por definir.
+- **Nunca entregar una imagen inventada.** Si no hay candidato aceptable, el estado es explícito (`SIN_IMAGEN`);
+  jamás una imagen de relleno ni "la más parecida". Estados de la entrega: `OK` (original de la tienda),
+  `OK_RECORTADA` (se le quitó el panel), `SIN_IMAGEN`, `ERROR` (una tienda no respondió: se vuelve a correr) y
+  `DATOS_INVALIDOS` (la fila se ignora, ver abajo).
+- **Cada foto entregada dice de dónde salió.** `reporte.csv` trae la tienda, si se recortó, el tamaño y los avisos
+  (borde, borrosa, baja resolución). La página del comercio y la URL de la imagen quedan en la caché
+  (`entry.properties`), **no** en el reporte, y el reporte **no dice por qué se eligió** esa foto entre las
+  candidatas: es una mejora posible.
+- **Siempre se contesta desde NUESTRA caché; las tiendas solo se consultan si el EAN no está.** La caché son archivos
+  (una carpeta por EAN), compartida entre clientes (las imágenes son del producto, no del cliente), con la imagen
+  guardada: no se enlaza la URL del comercio, esas URLs mueren. Las entradas **nunca vencen**; "no lo vende nadie" y
+  "sin foto utilizable" solo se guardan si **todas** las tiendas respondieron (un error nunca es una respuesta) y solo
+  se vuelve a consultar con `--refresh`. Decidido el 2026-11-06. El molde conceptual es el caché de
+  `api-bonificaciones`; el diseño del servicio alojado, en suspenso, está en `docs/proyecto/cache.md`.
+- **Se entrega un frente verificado, no cualquier imagen de la tienda.** Solo la posición 0 de cada tienda (las
+  posteriores pueden ser del reverso del envase, como pasó con Hesperidina) y sin el panel de plantilla: se recorta
+  si es un objeto separado del producto, se **verifica la salida**, y si no se puede, esa imagen no es candidata.
+  Nunca se corta el producto. Una foto rebanada por la fuente o borrosa pasa al fondo, nunca se descarta (los umbrales
+  son provisorios, de un solo catálogo).
+- **La herramienta elige UNA foto por producto**, por capas (`CandidatePicker`); la persona la cambia reemplazando el
+  archivo. En el modelo alojado se devolvía además la lista de candidatos (`docs/proyecto/contrato-api.md`).
+- **Lo que está mal se ignora** (decidido el 2026-11-06). Una fila sin EAN, con EAN inválido, sin SKU, con un SKU
+  que no sirve de nombre de archivo o con un SKU repetido con otro EAN no se consulta, no se imprime fila por fila y no
+  sale en la galería: se cuenta por tipo en el resumen y se explica en `reporte.csv`.
+- **La herramienta NO detecta marcas ajenas** (logos o sellos de comercios, textos agregados). El usuario pidió que las
+  fotos no las tengan; en el catálogo medido una revisión independiente no encontró ninguna, pero la galería es la
+  revisión que importa antes de entregar. Decirlo siempre.
 
 ## 6. Seguridad — no negociable
 
@@ -147,20 +156,27 @@ Nombres finales de los estados (el brief usa `OK`, `CON_MARCA`, `SIN_IMAGEN`): p
   productos). Java no lee WebP sin una librería extra, así que el descargador detecta WebP por los
   bytes y **o la lee (librería) o descarta esa imagen y sigue con otra**, nunca falla la consulta.
 - **El EAN es input externo.** Se valida (solo dígitos, largo y dígito verificador) antes de usarlo
-  en una consulta, una ruta de archivo o un log. Las rutas de caché las genera el servidor, nunca
-  con texto del llamador, y solo se guardan tipos de imagen en whitelist.
+  en una consulta, una ruta de archivo o un log. Las rutas de caché las genera la herramienta, nunca
+  con texto de la planilla, y solo se guardan tipos de imagen en whitelist.
+- **La planilla es input externo** (viene de un cliente). El xlsx se lee con DTD y entidades externas apagados y un
+  tope de tamaño por entrada del zip (un XML puede hacer leer un archivo local; un zip chico puede inflarse a
+  gigas). El SKU termina siendo un nombre de archivo, así que se **valida y nunca se "limpia"** (cambiarlo haría que
+  la foto deje de coincidir con el SKU de la tienda). Los textos que van al reporte y a la galería se escapan (HTML) y
+  se neutralizan para una planilla (una celda que empieza con `=` es una fórmula).
 - **Ningún secreto hardcodeado ni trackeado en git.** Key de SerpApi (si queda de plan B), webhook
   de Slack y credenciales de GESCOM: solo variables de entorno o archivos ignorados. Nunca en un
   doc ni en un mensaje de commit.
-- **Autenticación de la API: una `x-api-key` atada al cliente (tenant)**, como `api-bonificaciones`
-  (a confirmar al construirla). **El panel usa usuarios con BCrypt y sesión**, no una clave
+- *(Modelo alojado, en suspenso.)* **Autenticación de la API: una `x-api-key` atada al cliente (tenant)**, como
+  `api-bonificaciones` (a confirmar al construirla). **El panel usa usuarios con BCrypt y sesión**, no una clave
   compartida. El gating real es siempre del servidor.
-- **La consulta de demostración del panel (`fotos.demo.enabled`) NO tiene autenticación**: apagada
-  por defecto, solo en localhost, nunca desplegada. Se reemplaza por la API autenticada del panel.
+- *(`fotos-app`, frenado.)* **La consulta de demostración del panel (`fotos.demo.enabled`) NO tiene autenticación**:
+  apagada por defecto, solo en localhost, nunca desplegada, y se niega a arrancar si el servidor no escucha en
+  localhost. Se reemplaza por la API autenticada del panel.
 
-## 7. Diseño de la API
+## 7. Diseño de la API (modelo alojado, EN SUSPENSO)
 
-La API no tiene UI propia (el panel es aparte). Convenciones provisorias, a confirmar:
+**Nada de esto está construido ni rige hoy: la herramienta local no tiene API.** Se conserva por si se retoma el
+servicio (`fotos-app`). La API no tiene UI propia (el panel es aparte). Convenciones provisorias, a confirmar:
 
 - Un endpoint por EAN y **otro por lotes**. El pedido lleva solo el EAN: la coincidencia es por EAN
   exacto y el nombre del artículo no se usa para decidir (con Google hacía falta; con VTEX no).
@@ -169,30 +185,34 @@ La API no tiene UI propia (el panel es aparte). Convenciones provisorias, a conf
   `docs/proyecto/contrato-api.md`.
 - Errores con **código de dominio**, no solo el HTTP status.
 - Las reglas que cambian seguido (la lista y el orden de las tiendas, los criterios para elegir la
-  recomendada) van en datos, no en código.
+  recomendada) van en datos, no en código. (En la herramienta, las tiendas están en `stores.txt`; los criterios de
+  elección todavía son código, en `CandidatePicker`.)
 
 ## 8. Código
 
 - **Rutas, archivos, clases, funciones y variables en INGLÉS**, salvo los términos del negocio.
-  **Los textos que ve una persona en el panel van en español (AR)**, sin i18n por ahora, como los
-  otros paneles; los mensajes de la API y de los logs, en inglés.
+  **Los textos que ve una persona van en español (AR)**: el panel, y en la herramienta la consola, el reporte y la
+  galería, sin i18n por ahora; los mensajes de la API y de los logs, en inglés.
 - Sin comentarios en el código salvo que el WHY sea no obvio
 - **Términos del negocio, respetarlos tal cual**: EAN y los nombres de sistemas y clientes (GESCOM,
   dyssa, senderolaser). La lista se completa cuando aparezcan más.
 
 ## 9. Testing
 
-Herramienta: JUnit 5 + Spring Boot Test, y **WireMock** (un servidor HTTP de verdad como stub, no
-mocks en proceso) para los conectores de las tiendas. Tres capas, en `docs/metodo/testing.md`. La
-regla corta:
+Herramienta: JUnit 5 (más Spring Boot Test solo en `fotos-app`), y **WireMock** (un servidor HTTP de verdad como stub,
+no mocks en proceso) para los conectores de las tiendas y la descarga de imágenes. Tres capas, en
+`docs/metodo/testing.md`. La regla corta:
 
-- Lógica pura (normalización del nombre, validación del EAN, filtros de dominio, detección del tipo
+- Lógica pura (validación del EAN, lector de planillas, recorte del panel, elección de la foto, detección del tipo
   por bytes) → unit test
-- **Feature que toca datos → testear el SERVICIO que orquesta** (buscar → filtrar → descargar →
-  validar → cachear) **con las fuentes y el almacenamiento mockeados**, no solo las funciones
-  puras. El bug vive en el ensamblado. Casos obligatorios: la fuente devuelve cero resultados,
-  todos los resultados son redes sociales, la descarga falla a mitad, el servidor responde
-  `application/octet-stream`
+- **Feature que toca datos → testear el SERVICIO que orquesta** (en la herramienta, `PhotoFinder` y `BatchRun`:
+  buscar → descargar → filtrar → elegir → cachear) **con las tiendas y la red reemplazadas**, no solo las funciones
+  puras. El bug vive en el ensamblado. Casos obligatorios: la tienda devuelve cero resultados, la imagen trae el
+  panel y no se puede recortar, la descarga falla a mitad, el servidor responde `application/octet-stream`, la
+  imagen es WebP
+- **Las imágenes de los tests se dibujan en memoria**: ninguna foto de terceros entra al repo
+- **Una entrega se revisa completa y por alguien que no sabe qué esperás ver** (lección 20 de
+  `docs/metodo/lecciones.md`): un agente independiente sobre todas las fotos, no una muestra propia
 - Todo bug que llega a producción se cierra con un test que lo fija
 - **Los tests automáticos no pegan a las tiendas ni a otros terceros reales** (riesgo de bloqueo
   de IP y de abuso). Las mediciones contra terceros son scripts aparte, con pocas consultas y pausas
@@ -226,48 +246,47 @@ una auditoría, actualizar ese archivo con la versión auditada.
 
 ## 13. Contexto del proyecto
 
-**Arquitectura**: **Java 21 + Spring Boot 3.4, Gradle multi-módulo (Kotlin DSL)**: un núcleo sin
-framework (conectores a las tiendas, pipeline de imágenes) y una app que lo expone, como
-`api-impuestos` y `api-bonificaciones`. Más un **panel de administración Next.js (export estático)
-embebido en el jar y servido en `/admin`: todos los servicios llevan uno**, y se arma con el mismo
-molde que esos dos. Persistencia: **SQL Server + Flyway** como los hermanos (usuarios del panel,
-claves de API, historial de llamadas, índice de la caché por EAN); las imágenes van a disco, y
-dónde queda por definir. Fuente principal, ya medida: los **catálogos VTEX de supermercados
-argentinos consultados por EAN** (Jumbo, Carrefour, Disco, Vea, Masonline y tiendas
-regionales como Josimar y Cordiez): coincidencia exacta de EAN, ~0,5 s por consulta, imágenes de
-1000 a 2000 px. Detalle y cifras en `docs/proyecto/mediciones.md`. **En el catálogo real de
-senderolaser (130 productos): 96% está en alguna tienda y 94% tiene un frente utilizable; el 95%
-de las imágenes trae el panel de banner, así que el recorte es la ruta principal y no un extra.**
-Idea sugerida, **no decidida**:
-fuentes intercambiables detrás de la misma interfaz, en orden caché propia → VTEX por EAN →
-respaldo por definir (Open Food Facts, SerpApi). Ver `docs/proyecto/origen/` y, cuando exista,
-`docs/proyecto/arquitectura.md`.
+**Arquitectura**: **Java 21, Gradle multi-módulo (Kotlin DSL)**. `fotos-core` (sin framework: lector de planillas xlsx y
+csv sin librerías, detector y recortador del panel con `java.awt`, elección de la foto, caché en carpeta, escritura de
+la entrega), `fotos-stores` (conector VTEX por EAN con ritmo, reintento y cortacircuito, y descarga segura de
+imágenes), `fotos-tool` (la línea de comandos: `Main`, `PhotoFinder`, `BatchRun`) y `fotos-app` (Spring Boot + panel
+Next.js embebido: el servicio del modelo alojado, **frenado, no se saca**). La herramienta corre con `java`, sin Spring
+ni base de datos: la caché son archivos (`%LOCALAPPDATA%\api-fotos\cache`, una carpeta por EAN) y se instala en
+`C:\Dev\app-fotos` con `scripts/herramienta/instalar.ps1`.
 
-**Restricción dominante: independencia de terceros.** Está decidido que el servicio sea automático
-(recomienda una imagen sin que nadie elija; la tienda puede cambiarla) y lo más independiente
-posible de terceros. Cada tienda puede cambiar o cortar su API, y
-hay EAN que existen en una sola tienda: por eso las fuentes tienen que ser intercambiables y se
-consultan varias tiendas por EAN.
+**Fuente**: los catálogos VTEX de siete tiendas (Jumbo, Carrefour, Masonline, Josimar, Cordiez, Disco y Vea),
+consultados por EAN con coincidencia exacta; la lista y el orden están en `fotos-tool/src/main/resources/stores.txt`.
+Detalle y cifras en `docs/proyecto/mediciones.md`. **En el catálogo real de senderolaser (130 productos): 125 están en
+alguna tienda (96%) y se entregaron 124 fotos (95%).** El 95% de las imágenes que sirven las tiendas trae el panel de
+plantilla, así que el recorte es la ruta principal y no un extra. (Las cifras de calidad de la fase A4 son inválidas, las
+reemplaza la A5.) Una corrida de 130 productos tarda unos 2 minutos con 3 a la vez.
 
-**Decididas (2026-11-05)**: servicio nuevo en repo propio; automático por defecto, con **una
-imagen recomendada y los demás candidatos para que la tienda pueda cambiarla** (la tienda recorre todos sus códigos y una persona del cliente
-confirma o cambia cada imagen, incluso por una propia, en el sistema de la tienda: entendido el
-2026-11-06, a confirmar); **siempre desde nuestra caché, VTEX solo si no está**; **SQL Server +
-Flyway**; **Java 21 + Spring Boot con un panel Next embebido**; **VTEX por EAN como
-fuente principal** (el usuario lo aceptó después de medirlo). **Descartado por medición**: el
-scraping propio de Google, que bloquea a un navegador automatizado en la primera request y no se
-esquiva (ver `docs/proyecto/mediciones.md`). SerpApi queda de plan B y Open Food Facts de respaldo.
-**Abiertas**: **la política de la caché** (vencimientos, EAN sin imagen, cómo responde a una barrida
-de la tienda: `docs/proyecto/cache.md`); dónde se guardan las imágenes en disco; si un candidato con banner que no
-se pudo recortar se lista (marcado, nunca recomendado) o se descarta; qué se devuelve cuando ninguna
-tienda tiene una imagen sin banner (el recorte funcionó en los 12 casos revisados, pero falta un
-verificador); verificación con
-modelo de visión, ahora acotada a "frente limpio del producto correcto"; fuentes para los EAN que
-ninguna tienda tiene; cómo guarda `senderolaser` las imágenes en su SQL; y los **términos de uso de
-las APIs de VTEX y los derechos de las imágenes** (consultar antes de producción).
+**Restricción dominante: independencia de terceros.** La herramienta es automática y lo más independiente posible de
+terceros. Cada tienda puede cambiar o cortar su API (la búsqueda por EAN de VTEX no está documentada) y hay EAN que
+existen en una sola tienda: por eso se consultan varias tiendas por EAN y la lista es un dato, no código.
 
-**Permisos**: por definir.
+**Decididas (2026-11-05)**: repo propio; **VTEX por EAN como fuente principal** (el usuario lo aceptó después de
+medirlo). **Descartado por medición**: el scraping propio de Google, que bloquea a un navegador automatizado en la
+primera request y no se esquiva (ver `docs/proyecto/mediciones.md`). SerpApi y Open Food Facts quedaron de respaldo
+posible y **no están implementados**.
 
-**Fuera de alcance**: cargar las imágenes en el SQL del cliente (se propone que el backend de la
-tienda las traiga del servicio) y los derechos de uso de las fotos (son de los comercios y las
-marcas; el riesgo de publicarlas lo asume quien las publica, y hay que acordar quién).
+**Decididas (2026-11-06)**: **herramienta local de arrastrar y soltar en vez de servicio** (no se agrega otro servicio al
+servidor de la tienda); programa en `C:\Dev\app-fotos` y cada corrida crea ahí una `Fotos <fecha>` (nunca junto a la
+planilla); el instalador no crea accesos directos (los hace el usuario); la entrega es `<SKU>.jpg` o `.png` según lo que
+la foto realmente es, sin convertir, más un zip, `reporte.csv` y `galeria.html`; las columnas de la planilla se buscan por
+nombre de encabezado (el export de artículos de Axum se arrastra tal cual: `codigo` es el SKU y `codbarra` el EAN); la
+caché nunca vence; lo que está mal se ignora; los derechos de las imágenes los asume el usuario; `fotos-app` queda
+frenado y se conserva.
+
+**Abiertas / pendientes**: los **términos de uso de las APIs de VTEX** (sin consultar); **detección automática de marcas
+ajenas** (hoy se revisa a ojo en la galería); un aviso en el reporte cuando las tiendas discrepan entre sí (hoy manda la
+mayoría, sin avisar); **guardar todos los candidatos en la caché** (hoy solo la elegida, así que cambiar las reglas de
+elección exige `--refresh`); fuentes para los EAN que ninguna tienda tiene (marca propia de las cadenas: 4 de 130); los
+umbrales de borde y nitidez salen de un solo catálogo; no se midió cómo responden las tiendas con más de 3 productos a la
+vez; y traer los artículos directo de la API de Axum en vez de exportarlos (el gateway documentado en agosto no traía
+código de barras; sin reverificar).
+
+**Permisos**: no aplican a la herramienta (no hay usuarios ni login). Si se retoma el servicio, por definir.
+
+**Fuera de alcance**: cargar las imágenes en el SQL del cliente (la tienda las sube desde el zip) y los derechos de uso de
+las fotos (son de los comercios y las marcas; el riesgo de publicarlas lo asume el usuario, decidido el 2026-11-06).

@@ -1,22 +1,24 @@
-# docs/proyecto/ — esqueleto
+# docs/proyecto/
 
-Acá vive **todo lo específico del proyecto**. El kit (método, hooks, memorias semilla) se
-mantiene libre de dominio; esta carpeta es la contraparte y es la que cambia siempre.
+Todo lo específico del proyecto. El kit (método, hooks, memorias semilla) vive en `docs/metodo/` y no se mezcla con esto.
 
-Archivos sugeridos, en el orden en que conviene escribirlos:
+**Por dónde empezar:** `modelo-local.md` (cómo funciona la herramienta, cómo se usa y qué límites tiene) y el
+`README.md` de la raíz (cómo instalarla).
 
-| Archivo | Qué contiene | Cuándo se escribe |
+| Archivo | Qué es | Estado |
 |---|---|---|
-| `analisis-requerimientos.md` | Lo pedido, con las **contradicciones y preguntas para negocio** marcadas explícitamente. Prioridades declaradas vs. prioridades reales | antes de estimar nada |
-| `arquitectura.md` | Piezas, cómo se hablan, y **la decisión más cara** con su justificación y sus alternativas descartadas | antes de la primera línea de código |
-| `modelo-de-datos.md` | Entidades, relaciones, y los términos del negocio tal cual se llaman | con arquitectura |
-| `plan-de-fases.md` | Qué se construye y en qué orden. Cuál es el MVP real que sale de las prioridades | después de cerrar las preguntas de negocio |
-| `decisiones-abiertas.md` | Lo que falta decidir, **cada una con una recomendación**, no solo la pregunta | vivo, se vacía a medida que se cierran |
+| `modelo-local.md` | La herramienta local de arrastrar y soltar: el análisis que llevó a la decisión (secciones 1 a 6) y **lo que se construyó, cómo decide y los límites conocidos (sección 7)**. | Vigente |
+| `mediciones.md` | Lo medido, con fecha: de dónde salen las fotos, cobertura de las siete tiendas, calidad, y las dos revisiones independientes. La fase A5 reemplaza las cifras de calidad de la A4. | Vigente (registro) |
+| `origen/` | Lo investigado antes de empezar (el brief, la prueba con 10 productos de dyssa y su vara de medición). | Registro |
+| `contrato-api.md` | Contrato de la API del modelo alojado. | **En suspenso** |
+| `cache.md` | Diseño de la caché del modelo alojado. El principio sí rige y está implementado en la herramienta. | **En suspenso** (salvo el principio) |
+
+`fotos-app` (el servicio y el panel que corresponden a los dos últimos) se conserva en el repo, frenado y sin tocar, por si
+hay que escalar a un servicio más adelante.
 
 Dos reglas que hacen que esto sirva:
 
-1. **Las contradicciones de los requerimientos se escriben, no se resuelven por asunción.** Si
-   una funcionalidad es prioridad alta pero todo lo que la alimenta es prioridad baja, eso es un
-   hallazgo para negocio, no un problema técnico.
-2. **Una decisión cerrada se mueve a `MEMORY.md` → "Temas CERRADOS"** con la fecha y el motivo.
-   Si no, se vuelve a discutir dentro de tres sesiones.
+1. **Las contradicciones se escriben, no se resuelven por asunción.** Una cifra que resultó mal se marca como inválida
+   donde estaba (como las de la fase A4 de `mediciones.md`), no se pisa en silencio.
+2. **Una decisión cerrada se anota con su fecha y su motivo** en el documento donde vive y en `MEMORY.md`, para que no se
+   vuelva a discutir.

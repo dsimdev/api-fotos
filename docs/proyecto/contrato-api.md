@@ -1,4 +1,9 @@
-# Contrato de la API — BORRADOR
+# Contrato de la API — BORRADOR (EN SUSPENSO)
+
+> **EN SUSPENSO desde el 2026-11-06.** Este contrato es del modelo alojado (un servicio con API por cliente), que se
+> frenó cuando el proyecto pasó a ser una herramienta local de arrastrar y soltar (`modelo-local.md`). Se conserva por si
+> hay que escalar a un servicio (`fotos-app` sigue en el repo, sin tocar). **Nada de esto está implementado ni rige hoy**:
+> la herramienta no tiene API ni "candidatos": elige una foto por producto y la persona la cambia reemplazando el archivo.
 
 > **Estado: borrador del 2026-11-05.** Lo que está decidido es el proceso (sección 1). Todo lo demás es
 > una propuesta a revisar antes de escribir código; lo que falta decidir está en la sección 7.

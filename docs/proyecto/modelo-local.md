@@ -92,7 +92,7 @@ destino cuando la herramienta ande.
 
 ### Cómo se usa
 
-1. Una vez: `scripts/herramienta/instalar.ps1` (compila y copia el programa a **`C:\Dev\Fotos Tienda`**). No crea accesos
+1. Una vez: `scripts/herramienta/instalar.ps1` (compila y copia el programa a **`C:\Dev\app-fotos`**). No crea accesos
    directos: los arma cada persona. Se puede correr de nuevo para actualizar; reemplaza solo `bin`, `lib` y el lanzador,
    así que **nunca toca las entregas**, que viven en esa misma carpeta.
 2. Cada vez que un cliente manda su lista: **arrastrar la planilla (.xlsx o .csv, con columnas SKU y EAN) sobre

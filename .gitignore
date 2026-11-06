@@ -37,8 +37,8 @@ entrega-servidor/*.jar
 entrega-servidor/*webhook*
 
 # Delivery folders the local tool writes next to a client sheet: client data and third-party images.
-*- fotos/
-*- fotos (*)/
+Fotos 20??-??-??/
+Fotos 20??-??-?? (*)/
 
 # Exports of a client's articles (costs and price lists): client data, never versioned.
 /*.csv

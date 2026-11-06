@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-  Instala la herramienta de fotos en C:\Dev\Fotos Tienda.
+  Instala la herramienta de fotos en C:\Dev\app-fotos.
 
 .DESCRIPTION
   Compila (gradlew installDist) y copia el programa a la carpeta de instalación. Los accesos directos los crea
@@ -11,13 +11,13 @@
   en %LOCALAPPDATA%\api-fotos\cache.
 
 .PARAMETER Carpeta
-  Donde queda instalado el programa y donde se crean las entregas. Por defecto C:\Dev\Fotos Tienda.
+  Donde queda instalado el programa y donde se crean las entregas. Por defecto C:\Dev\app-fotos.
 
 .PARAMETER SinCompilar
   Usa lo ya compilado en fotos-tool\build\install en vez de volver a compilar.
 #>
 param(
-    [string]$Carpeta = 'C:\Dev\Fotos Tienda',
+    [string]$Carpeta = 'C:\Dev\app-fotos',
     [switch]$SinCompilar
 )
 
