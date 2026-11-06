@@ -1,4 +1,4 @@
-package com.axum.fotos.app.store;
+package com.axum.fotos.stores;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;

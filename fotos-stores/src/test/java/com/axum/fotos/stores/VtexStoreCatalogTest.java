@@ -1,4 +1,4 @@
-package com.axum.fotos.app.store;
+package com.axum.fotos.stores;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
@@ -14,7 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.axum.fotos.app.config.HttpConfig;
 import com.axum.fotos.core.Ean;
 import com.axum.fotos.core.StoreException;
 import com.axum.fotos.core.StoreException.Kind;
@@ -51,11 +50,9 @@ class VtexStoreCatalogTest {
         server.stop();
     }
 
-    /** The REAL client configuration (HttpConfig), not a copy of it, so its headers and redirect policy are tested. */
+    /** The REAL client factory (StoreHttp), not a copy of it, so its headers and redirect policy are tested. */
     private VtexStoreCatalog catalogFor(String baseUrl, Duration readTimeout) {
-        var props = new CatalogProperties(List.of(), Duration.ofSeconds(2), readTimeout, 4, Duration.ofSeconds(30),
-                Duration.ofMillis(200), Duration.ofSeconds(5), Duration.ofMinutes(5), Duration.ZERO);
-        RestClient client = new HttpConfig().restClient(RestClient.builder(), props, "9.9.9");
+        RestClient client = StoreHttp.client(RestClient.builder(), Duration.ofSeconds(2), readTimeout, "9.9.9");
         return new VtexStoreCatalog("jumbo", baseUrl, client, new ObjectMapper());
     }
 

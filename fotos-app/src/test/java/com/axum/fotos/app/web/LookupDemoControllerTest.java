@@ -7,7 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.axum.fotos.app.store.StoreCatalogs;
+import com.axum.fotos.stores.StoreCatalogs;
 import com.axum.fotos.core.Ean;
 import com.axum.fotos.core.StoreCatalog;
 import com.axum.fotos.core.StoreException;

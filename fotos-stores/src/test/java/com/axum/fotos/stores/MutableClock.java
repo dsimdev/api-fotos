@@ -1,4 +1,4 @@
-package com.axum.fotos.app.store;
+package com.axum.fotos.stores;
 
 import java.time.Clock;
 import java.time.Duration;

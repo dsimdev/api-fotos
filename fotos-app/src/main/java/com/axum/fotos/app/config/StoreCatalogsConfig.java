@@ -1,12 +1,12 @@
 package com.axum.fotos.app.config;
 
 import com.axum.fotos.app.store.CatalogProperties;
-import com.axum.fotos.app.store.ResilientStoreCatalog;
-import com.axum.fotos.app.store.Sleeper;
-import com.axum.fotos.app.store.StoreCatalogs;
-import com.axum.fotos.app.store.StoreRateLimiter;
-import com.axum.fotos.app.store.StoreResilience;
-import com.axum.fotos.app.store.VtexStoreCatalog;
+import com.axum.fotos.stores.ResilientStoreCatalog;
+import com.axum.fotos.stores.Sleeper;
+import com.axum.fotos.stores.StoreCatalogs;
+import com.axum.fotos.stores.StoreRateLimiter;
+import com.axum.fotos.stores.StoreResilience;
+import com.axum.fotos.stores.VtexStoreCatalog;
 import com.axum.fotos.core.StoreCatalog;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;

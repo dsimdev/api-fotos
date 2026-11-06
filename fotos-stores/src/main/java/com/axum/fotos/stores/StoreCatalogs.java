@@ -1,4 +1,4 @@
-package com.axum.fotos.app.store;
+package com.axum.fotos.stores;
 
 import com.axum.fotos.core.StoreCatalog;
 import java.util.List;

@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.axum.fotos.app.config.HttpConfig;
 import com.axum.fotos.app.store.CatalogProperties;
-import com.axum.fotos.app.store.VtexStoreCatalog;
+import com.axum.fotos.stores.VtexStoreCatalog;
 import com.axum.fotos.core.Ean;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;

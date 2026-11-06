@@ -9,6 +9,7 @@ description = "REST API, store connectors and the embedded admin panel."
 
 dependencies {
     implementation(project(":fotos-core"))
+    implementation(project(":fotos-stores"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
 

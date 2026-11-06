@@ -3,6 +3,7 @@ package com.axum.fotos.app.store;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.axum.fotos.core.StoreCatalog;
+import com.axum.fotos.stores.StoreCatalogs;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
