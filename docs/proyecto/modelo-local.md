@@ -182,7 +182,11 @@ banco-fotos/
   un archivo que no se puede leer se deja donde está y se avisa (WebP no se puede leer: se pide JPG o PNG). `--refresh` nunca
   reemplaza una foto propia y no se consulta ninguna tienda por ella; el reporte dice `propia` y solo avisa si es chica.
 - **`indice.csv`** (EAN, estado, origen, tienda, tipo, formato, lado, si tiene original, fecha, página, imagen, detalle) es lo
-  único que va a git: el `.gitignore` del banco deja afuera las fotos, que son de los comercios y las marcas.
+  único que va a git: el `.gitignore` del banco deja afuera las fotos, que son de los comercios y las marcas. Si la carpeta del
+  banco es un repo git (hoy lo es: `github.com/dsimdev/banco-fotos`, privado), **después de cada corrida y de `--banco` el
+  programa commitea solo `indice.csv` si cambió y lo sube** (`--sin-git` lo evita). Nunca fuerza ni baja cambios, no pide
+  credenciales (si faltan, falla en vez de colgarse) y cualquier falla es una línea que no cuesta la corrida; un commit que no
+  se pudo subir lo manda la corrida siguiente.
 - **Qué NO es:** no guarda las fotos de las tiendas que no se eligieron (solo la elegida y su original), y no reemplaza a la
   fuente: un EAN nuevo sigue necesitando una tienda o una foto propia.
 

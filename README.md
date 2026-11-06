@@ -32,7 +32,8 @@ correr la misma planilla: lo ya bajado queda guardado y solo se piden esos. Por 
 no la toca), junto con la foto original sin recortar y de dónde salió: la próxima planilla que pida ese producto la saca de ahí sin
 consultar a nadie, y el SKU nunca se guarda en el banco. **Para sumar una foto propia**, dejá `<EAN>.jpg` o `<EAN>.png` en esa carpeta:
 se reconoce en la próxima corrida o con `fotos-tool --banco`, y `--refresh` no la reemplaza. `indice.csv` lista todo el banco; es lo
-único que se versiona en git (las fotos no).
+único que se versiona en git (las fotos no), y si la carpeta del banco es un repo git el programa lo commitea y lo sube solo después
+de cada corrida (con `--sin-git` no lo hace).
 
 ## Qué hay en el repositorio
 

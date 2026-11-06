@@ -275,6 +275,92 @@ class MainTest {
         assertTrue(out().contains("--banco no lleva planilla"), out());
     }
 
+    // ---- the index is committed and pushed after a run when the bank folder is a git repository ----
+
+    private final List<List<String>> gitCalls = new ArrayList<>();
+
+    /** A git that records what it is asked: the status says the index changed, the push goes through unless told otherwise. */
+    private com.axum.fotos.core.cache.BankGit.Runner fakeGit(boolean pushWorks) {
+        return (where, command, timeout) -> {
+            gitCalls.add(command);
+            if (command.get(1).equals("status")) return new com.axum.fotos.core.cache.BankGit.Result(0, " M indice.csv\n");
+            if (command.get(1).equals("push") && !pushWorks) return new com.axum.fotos.core.cache.BankGit.Result(1, "fatal: Could not resolve host\n");
+            return new com.axum.fotos.core.cache.BankGit.Result(0, "");
+        };
+    }
+
+    private int runWithGit(com.axum.fotos.core.cache.BankGit.Runner git, Path program, String... args) {
+        return Main.run(args, new PrintStream(captured, true, StandardCharsets.UTF_8), MainTest::stubFinder, opened::add, program, NOVEMBER_6, git);
+    }
+
+    private Path bankThatIsARepo(Path program) throws IOException {
+        return Files.createDirectories(program.resolve("banco-fotos").resolve(".git")).getParent();
+    }
+
+    private List<String> gitVerbs() {
+        return gitCalls.stream().map(c -> c.get(1)).toList();
+    }
+
+    @Test
+    void afterARunTheChangedIndexIsCommittedAndPushedWhenTheBankIsARepo() throws IOException {
+        Path program = dir.resolve("app-fotos");
+        bankThatIsARepo(program);
+
+        int code = runWithGit(fakeGit(true), program, sheet("SKU,EAN\n640008,7791337010604\n").toString());
+
+        assertEquals(0, code, out());
+        assertEquals(List.of("status", "add", "commit", "push"), gitVerbs());
+        assertTrue(out().contains("Índice versionado en git y subido."), out());
+        assertEquals(List.of("git", "commit", "-m", "chore(index): update the index (1 EAN)", "--", "indice.csv"), gitCalls.get(2));
+    }
+
+    @Test
+    void bancoVersionsTheIndexToo() throws IOException {
+        Path program = dir.resolve("app-fotos");
+        Path bank = bankThatIsARepo(program);
+        Files.write(bank.resolve("7791337010604.jpg"), Pics.clean("mine").bytes());
+
+        int code = runWithGit(fakeGit(true), program, "--banco");
+
+        assertEquals(0, code, out());
+        assertTrue(gitVerbs().contains("push"), gitVerbs().toString());
+        assertTrue(out().contains("Índice versionado en git y subido."), out());
+    }
+
+    @Test
+    void theSinGitOptionLeavesGitAlone() throws IOException {
+        Path program = dir.resolve("app-fotos");
+        bankThatIsARepo(program);
+
+        runWithGit(fakeGit(true), program, sheet("SKU,EAN\n640008,7791337010604\n").toString(), "--sin-git");
+
+        assertTrue(gitCalls.isEmpty(), gitCalls.toString());
+        assertFalse(out().contains("versionado"), out());
+    }
+
+    /** The convenience must never cost the delivery: a push that fails is one line, and the run still ends well. */
+    @Test
+    void aPushThatFailsIsOneLineAndTheDeliveryIsStillThere() throws IOException {
+        Path program = dir.resolve("app-fotos");
+        bankThatIsARepo(program);
+
+        int code = runWithGit(fakeGit(false), program, sheet("SKU,EAN\n640008,7791337010604\n").toString());
+
+        assertEquals(0, code, out());
+        assertTrue(out().contains("no se pudo subir (fatal: Could not resolve host)"), out());
+        assertTrue(Files.isRegularFile(program.resolve("Fotos 2026-11-06").resolve("fotos").resolve("640008.jpg")));
+    }
+
+    @Test
+    void aBankThatIsNotARepositoryNeverMentionsGitAndNeverRunsIt() throws IOException {
+        Path program = dir.resolve("app-fotos");
+
+        runWithGit(fakeGit(true), program, sheet("SKU,EAN\n640008,7791337010604\n").toString());
+
+        assertTrue(gitCalls.isEmpty());
+        assertFalse(out().contains("git"), out());
+    }
+
     @Test
     void theCacheOptionStillPutsTheBankSomewhereElse() throws IOException {
         Path program = dir.resolve("app-fotos");

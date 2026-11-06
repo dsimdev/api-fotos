@@ -1,6 +1,7 @@
 package com.axum.fotos.tool;
 
 import com.axum.fotos.core.cache.BankFiles;
+import com.axum.fotos.core.cache.BankGit;
 import com.axum.fotos.core.cache.BankIndex;
 import com.axum.fotos.core.cache.BankIngest;
 import com.axum.fotos.core.cache.CacheEntry;
@@ -36,7 +37,7 @@ import java.util.stream.Collectors;
  *
  * <pre>
  *   fotos-tool &lt;planilla&gt; [--refresh] [--cache &lt;carpeta&gt;] [--salida &lt;carpeta&gt;] [--paralelo &lt;1-8&gt;] [--no-abrir]
- *   fotos-tool --banco [--cache &lt;carpeta&gt;]
+ *   fotos-tool --banco [--cache &lt;carpeta&gt;] [--sin-git]
  * </pre>
  *
  * <p>Each run writes a new folder {@code Fotos <date>} INSIDE the folder the program is installed in (the sheet is
@@ -46,6 +47,7 @@ import java.util.stream.Collectors;
  * <p>The photo BANK ({@code banco-fotos} inside the program folder, by EAN) lives outside the delivery folder so that
  * the next list reuses every photo already found. A photo a person drops in the bank as {@code <EAN>.jpg} is
  * recognised at the start of every run, and {@code --banco} does only that and rewrites the index.
+ * If the bank folder is a git repository, a changed index is committed and pushed after the run ({@code --sin-git} skips it).
  * {@code --refresh} asks the stores again for the EANs of THIS list and replaces a stored photo only with a better
  * one found: it never throws a stored photo away.
  */
@@ -77,16 +79,23 @@ public final class Main {
      * @param clock      gives the date in the name of the delivery folder
      */
     static int run(String[] args, PrintStream out, FinderFactory factory, Consumer<Path> opener, Path installDir, Clock clock) {
+        return run(args, out, factory, opener, installDir, clock, BankGit.SYSTEM);
+    }
+
+    /** @param git how the bank's index is committed and pushed; replaceable so a test needs neither git nor a network */
+    static int run(String[] args, PrintStream out, FinderFactory factory, Consumer<Path> opener, Path installDir, Clock clock,
+                   BankGit.Runner git) {
         Path sheet = null;
         Path cacheDir = null;
         Path outputRoot = null;
         int parallel = DEFAULT_PARALLEL;
-        boolean refresh = false, open = true, bankOnly = false;
+        boolean refresh = false, open = true, bankOnly = false, noGit = false;
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
                 case "--refresh" -> refresh = true;
                 case "--no-abrir" -> open = false;
                 case "--banco" -> bankOnly = true;
+                case "--sin-git" -> noGit = true;
                 case "--cache" -> {
                     if (i + 1 >= args.length) return fail(out, "Falta la carpeta después de --cache.");
                     cacheDir = Path.of(args[++i]);
@@ -117,7 +126,7 @@ public final class Main {
         }
         if (bankOnly) {
             if (sheet != null) return fail(out, "--banco no lleva planilla: solo reconoce las fotos propias y arma el índice.");
-            return tendBank(out, new LocalCache(cacheDir != null ? cacheDir : defaultBankDir(installDir)), clock);
+            return tendBank(out, new LocalCache(cacheDir != null ? cacheDir : defaultBankDir(installDir)), clock, noGit, git);
         }
         if (sheet == null) {
             usage(out);
@@ -161,7 +170,7 @@ public final class Main {
             Path folder = DeliveryWriter.newFolder(outputRoot, "Fotos " + LocalDate.now(clock));
             var written = DeliveryWriter.write(folder, lines);
             summary(out, written, Duration.ofNanos(System.nanoTime() - started));
-            writeIndex(out, bank);
+            versionIndex(out, bank, writeIndex(out, bank), noGit, git);
             if (open) opener.accept(folder);
             return 0;
         } catch (IOException e) {
@@ -227,6 +236,7 @@ public final class Main {
         out.println("  --refresh     vuelve a consultar las tiendas por los EAN de esta planilla (no pierde la foto guardada si no encuentra otra)");
         out.println("  --cache       carpeta del banco de fotos (por defecto, banco-fotos dentro de la carpeta del programa)");
         out.println("  --banco       sin planilla: reconoce las fotos propias dejadas en el banco (<EAN>.jpg) y arma el índice");
+        out.println("  --sin-git     no commitea ni sube el índice del banco (por defecto lo hace si la carpeta del banco es un repo git)");
         out.println("  --salida      carpeta donde se crea \"Fotos <fecha>\" (por defecto, la carpeta del programa)");
         out.println("  --paralelo    cuántos productos se consultan a la vez (por defecto " + DEFAULT_PARALLEL + "); más rápido, más tráfico a las tiendas");
         out.println("  --no-abrir    no abre la carpeta al terminar");
@@ -252,10 +262,10 @@ public final class Main {
     }
 
     /** {@code --banco}: recognise the photos dropped in the bank, rewrite the index and say what the bank holds. */
-    private static int tendBank(PrintStream out, LocalCache bank, Clock clock) {
+    private static int tendBank(PrintStream out, LocalCache bank, Clock clock, boolean noGit, BankGit.Runner git) {
         out.println("Banco de fotos: " + bank.root());
         takeDroppedPhotos(out, bank, clock);
-        writeIndex(out, bank);
+        versionIndex(out, bank, writeIndex(out, bank), noGit, git);
         try {
             int ready = 0, manual = 0, withOriginal = 0, without = 0;
             for (var ean : bank.eans()) {
@@ -297,12 +307,30 @@ public final class Main {
     }
 
     /** The index is for the person and for git: a failure to write it never costs the delivery that was just made. */
-    private static void writeIndex(PrintStream out, LocalCache bank) {
+    private static int writeIndex(PrintStream out, LocalCache bank) {
         try {
             int lines = BankIndex.write(bank);
             out.println("Banco de fotos: " + lines + " EAN en " + bank.root().resolve(BankIndex.FILE_NAME));
+            return lines;
         } catch (IOException e) {
             out.println("No pude escribir el índice del banco: " + e.getMessage());
+            return -1;
+        }
+    }
+
+    /**
+     * When the bank folder is a git repository, a changed index is committed (alone) and pushed. It is a convenience: any
+     * failure is one line here and never costs the run or the delivery.
+     */
+    private static void versionIndex(PrintStream out, LocalCache bank, int eans, boolean noGit, BankGit.Runner git) {
+        if (noGit || eans < 0) return;
+        var report = BankGit.publishIndex(bank.root(), eans, git);
+        switch (report.outcome()) {
+            case PUSHED -> out.println("Índice versionado en git y subido.");
+            case COMMITTED_ONLY -> out.println("Índice versionado en git, pero no se pudo subir (" + report.detail()
+                    + "): se vuelve a intentar la próxima vez.");
+            case FAILED -> out.println("No pude versionar el índice en git: " + report.detail() + ".");
+            case NOT_A_REPO, UNCHANGED -> { }
         }
     }
 

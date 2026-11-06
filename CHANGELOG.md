@@ -26,7 +26,13 @@ serve as plain files. The photos are for internal use (the store has them, nobod
   `BankIngestTest` (14), `PhotoFinderTest.aPhotoAPersonPutInIsUsedAsItIsAndNeverRefreshedNorAskedAboutAtAll` and `MainTest`.
 - **`indice.csv`** in the root of the bank, one line per EAN in EAN order (state, origin, store, kind, size, whether it has an
   original, date, product page and image URL), rewritten after every run and byte-for-byte the same for the same bank, so it
-  can be versioned. The bank has no SKU: it is the client's, not the bank's. A `README.md` and a `.gitignore` that versions only
+  can be versioned. When the bank folder is a git repository the program commits (ONLY `indice.csv`, whatever else is modified
+  in the folder) and pushes it after every run and after `--banco`, unless `--sin-git`. It never forces, never pulls and never asks
+  for anything (`GIT_TERMINAL_PROMPT=0`, a time limit on every call, no shell: fixed argument lists, the commit message is made of
+  a number); every failure (no git, no network, a rejected push) is one line and never costs the run or the delivery, and a commit
+  whose push failed is sent by the next run. `BankGitTest`: the logic with a fake git (14 cases) and three with real git against a
+  local bare repository (only the index reaches the remote and no photo does, an unchanged index makes no commit, an unreachable
+  remote leaves the commit and the next run sends it), plus `MainTest`. The bank has no SKU: it is the client's, not the bank's. A `README.md` and a `.gitignore` that versions only
   the index (the photos belong to the stores and brands) are created if missing and never overwritten.
 
 ### Changed

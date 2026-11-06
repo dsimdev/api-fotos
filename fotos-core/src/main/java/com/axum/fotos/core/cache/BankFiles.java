@@ -33,6 +33,10 @@ public final class BankFiles {
             ## Git
 
             Solo se versionan este README, el `.gitignore` y `indice.csv`. Las fotos no van a git.
+
+            Si esta carpeta es un repo git, después de cada corrida (y de `fotos-tool --banco`) el programa commitea **solo**
+            `indice.csv` cuando cambió y lo sube. Nunca fuerza nada ni baja cambios: si el remoto se movió por su cuenta, el
+            push se rechaza y lo resolvés vos. Con `--sin-git` no toca git.
             """;
 
     static final String GITIGNORE = """
